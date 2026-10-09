@@ -38,7 +38,7 @@ rtrVal DecodeMemory(char *fp){
     FILE *file = fopen(fp, "r"); 
     if (file == NULL) return (rtrVal){.result = 1, .eval = "Cannot open file\n"}; 
     char buffer[8]; 
-    if (fgets(buffer, sizeof(buffer), file) != NULL)
+    if (fgets(buffer, sizeof(buffer), file) == NULL)
         return (rtrVal){.result = 1, .eval = "SECURITY: Memory file empty\n"}; 
     TotalMemoryDeclared = atoi(buffer); 
     return (rtrVal){.result = 0};
