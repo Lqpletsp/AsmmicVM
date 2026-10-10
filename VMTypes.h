@@ -64,18 +64,11 @@ typedef struct {
 } BCToken;
 
 extern int TotalMemoryDeclared; 
-extern int *MemoryPool;
+extern int *MemoryPool;  
 extern BCToken *ByteCode;
+extern int BCP;  
 
-inline bool InitMemory(const int memory, const int InstructionCount) {
-  MemoryPool = (int *)malloc(memory * sizeof(int));
-  ByteCode = (BCToken *)malloc(InstructionCount * sizeof(BCToken));
-  if (MemoryPool == NULL || ByteCode == NULL) {
-    printf("Memory declaration error during sandbox initialization\n");
-    return false;
-  }
-  return true;
-}
+
 inline void CleanupPointers() {
   free(ByteCode);
   free(MemoryPool);

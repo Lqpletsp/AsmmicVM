@@ -9,11 +9,47 @@ typedef struct {
     char eval[256];
 } rtrVal;
 
-rtrVal InitByteCode(char *IR){
+rtrVal InitByteCode(char *IR, const int IRsize){
+    bool CommandMode = true; 
+    int CurrentTokenCapacity = 16; 
+    int CurrentTokenSize = 0; 
+    char *Token = malloc(16*sizeof(char)); 
+    for (size_t i = 0; i < IRsize; ++i){
+        char ch = IR[i]; 
+        if (ch == ' '){
+            if (CommandMode){
+                enum BCT BC;  
+                enum Instructions INST;  
+                if (!strcmp(Token, "SET")) INST = SET; 
+                else if (!strcmp(Token, "OUT")) INST = OUTPUT; 
+                else if (!strcmp(Token, "INP")) INST = INPUT; 
+                else if (!strcmp(Token, "GOTO")) INST = GOTOLN; 
+                else if (!strcmp(Token, "MLC")) INST = MLC; 
+                else return (rtrVal){.result = 0, .eval = "SECURITY: Invalid IR format. Appropriate command not found"}; 
+                BCToken BT; 
+                BT.ByteCodeType = VMInstruction; 
+                BT.Sub_Type.Instruction = INST; 
+                BT.LT = ""; 
+                ByteCode[BCP] = BT;  
+                CommandMode = false; 
+                ++BCP; 
+            }
+        }else{
+            // realloc will reduce the token size so fix that
+            // size of token will return the size of the pointer 
+            if (CurrentTokenSize>=CurrentTokenCapacity){
+                CurrentTokenCapacity += 2;
+                Token = realloc(Token, CurrentTokenCapacity*sizeof(char)); 
+            }
+            Token[CurrentTokenSize++] = ch; 
+        }
+    }
     return (rtrVal){.result = 0}; 
 }
 
 rtrVal DecodeIR(char *fp) {
+    if (ByteCode == NULL || MemoryPool == NULL) 
+        return (rtrVal){.result = 0, .eval = "SECURITY: Invalid file format"};
     FILE *file = fopen(fp, "r"); 
     if (file == NULL) 
         return (rtrVal){.result = 1, .eval = "Cannot open file\n"}; 
@@ -28,10 +64,9 @@ rtrVal DecodeIR(char *fp) {
     size_t bytes_read = fread(file_contents, 1, file_size, file);
     file_contents[bytes_read] = '\0';
     fclose(file);
-    rtrVal returned = InitByteCode(file_contents); 
+    rtrVal returned = InitByteCode(file_contents, bytes_read); 
     if (returned.result > 0) return returned; 
     free(file_contents);
-
     return (rtrVal){.result = 0}; 
 }
 rtrVal DecodeMemory(char *fp){
@@ -41,6 +76,8 @@ rtrVal DecodeMemory(char *fp){
     if (fgets(buffer, sizeof(buffer), file) == NULL)
         return (rtrVal){.result = 1, .eval = "SECURITY: Memory file empty\n"}; 
     TotalMemoryDeclared = atoi(buffer); 
+    MemoryPool = (int *)malloc(TotalMemoryDeclared * sizeof(int)); 
+    if (MemoryPool == NULL) return  (rtrVal){.result = 1, .eval = "Memory declaration failed during sandbox initialization\n"};
     return (rtrVal){.result = 0};
 }
 int Decode_main(const char *dir_path) {
@@ -50,7 +87,7 @@ int Decode_main(const char *dir_path) {
         return 1; 
     }
     // CheckList at 0:=Memory, 1:=Variables, 2:=IR
-    bool CheckList[4] = {false, false, false}; 
+    bool CheckList[3] = {false, false, false}; 
     struct dirent *entry;
     while ((entry = readdir(dir)) != NULL) {
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
