@@ -56,6 +56,10 @@ using DTFD = DataTypesForDecoder;
 bool ValidateDataType(const std::string& dat, const DTFD dtp){
     try{
         std::stod(dat); 
+        if (dtp == DTFD::VID){
+            auto it = IdentifierMap.find(std::stoi(dat));
+            if (it == IdentifierMap.end()) return false; 
+        }
     } catch(...){
         if (dtp == DTFD::INTEGER || dtp == DTFD::DOUBLE || dtp == DTFD::VID) return false; 
         else if (!((dat == "T" || dat == "F") && dtp == DTFD::BOOLEAN)) return false; 
@@ -193,7 +197,17 @@ rtrVal DecodeIR(const std::string& fp) {
     if (returned.result > 0) return returned; 
     return {0, ""}; 
 }
-
+rtrVal InitMemory(const std::string& fc){
+    try{
+        TotalMemoryDeclared = std::stoi(fc); 
+        for (size_t i = TotalMemoryDeclared; i > 0; --i){
+            MemoryPool.push(i);
+        }
+    } catch(...){
+        return {.result = 1, .eval = "Memory declaration failed during sandbox initialization"};
+    }
+    return {0};
+}
 rtrVal DecodeMemory(const std::string& fp) {
     std::ifstream file(fp); 
     if (!file.is_open()) return {1, "Cannot open file\n"}; 
@@ -202,13 +216,8 @@ rtrVal DecodeMemory(const std::string& fp) {
     if (!(file >> buffer))
         return {1, "SECURITY: Memory file empty\n"}; 
     
-    TotalMemoryDeclared = std::stoi(buffer); 
-    try {
-        MemoryPool.resize(TotalMemoryDeclared, 0);
-    } catch (...) {
-        return {1, "Memory declaration failed during sandbox initialization\n"};
-    }
-
+    rtrVal rtr = InitMemory(buffer);
+    if (rtr.result > 0) return rtr;
     return {0, ""};
 }
 
@@ -249,23 +258,40 @@ int Decode_main(const std::string& dir_path) {
                 return 1;
             }
             CheckList[0] = true; 
-        } 
+            std::cout << "[Memory decoding complete]\n";
+        }
+
         else if (filename == "ir.dsm") {
+            if (!(CheckList[0] && CheckList[1])){
+                std::cerr << "SECURITY: Invalid format for decoding caused by invalid file placement\n";
+                return 1;
+            }
             rtrVal rtr = DecodeIR(filepath);
             if (rtr.result > 0) {
-                std::cerr << rtr.eval;
+                std::cerr << rtr.eval << '\n';
                 return 1;
             }
             CheckList[2] = true;
+            std::cout << "[IR decoding complete]\n";
         } 
         else if (filename == "variables.dsm") {
+            if (!CheckList[0]){
+                std::cerr << "SECURITY: Invalid format for decoding caused by invalid file placement\n";
+                return 1; 
+            }
+            rtrVal rtr = DecodeVariables(filepath);
+            if (rtr.result > 0){
+                std::cerr << rtr.eval << '\n'; 
+                return 1;
+            }
             CheckList[1] = true;
+            std::cout << "[Variables decoding complete]\n";
         } 
         else {
             std::cerr << "SECURITY: Directory does not conform to the rules of the VM decoder\n"; 
             return 1; 
         }
     }
-
+    std::cout << "[All checks passed]\n";
     return 0; 
 }

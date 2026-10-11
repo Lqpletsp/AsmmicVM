@@ -2,6 +2,7 @@
 #include <vector>
 #include <deque>
 #include <unordered_map>
+#include <stack>
 
 enum BCT { // BCT -> Bytecode Types
   Constant,
@@ -71,7 +72,7 @@ struct VDT{
 };
 
 extern int TotalMemoryDeclared; 
-extern std::vector<int> MemoryPool;  
+extern std::stack<int> MemoryPool;  
 extern std::vector<BCToken> ByteCode; 
 extern int BCP;  
 
