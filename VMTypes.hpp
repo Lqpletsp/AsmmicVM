@@ -1,6 +1,7 @@
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <string>
+#include <vector>
+#include <deque>
+#include <unordered_map>
 
 enum BCT { // BCT -> Bytecode Types
   Constant,
@@ -47,29 +48,32 @@ enum Instructions {
   INPUT,
   MLC,
 };
+struct RawMemoryAddress{
+    std::string dat; 
+    DataTypes DTP; 
+};
 
-typedef struct {
-  char *dat;
-  enum DataTypes DTP;
-} RawMemoryAddress;
-
-typedef struct {
-  char *LT;
+struct BCToken{
+  std::string LT;
   enum BCT ByteCodeType;
-  union {
+  union{
     enum Instructions Instruction;
     enum KeyWords KeyWord;
     enum DataTypes DataType;
   } Sub_Type;
-} BCToken;
+};
+
+struct VDT{
+  int VID; 
+  DataTypes DT; // Data Type
+  std::deque<int> MAA; // Memory Adresses Assigned
+  bool Immutable = false;  
+};
 
 extern int TotalMemoryDeclared; 
-extern int *MemoryPool;  
-extern BCToken *ByteCode;
+extern std::vector<int> MemoryPool;  
+extern std::vector<BCToken> ByteCode; 
 extern int BCP;  
 
+extern std::unordered_map<int, VDT> IdentifierMap;
 
-inline void CleanupPointers() {
-  free(ByteCode);
-  free(MemoryPool);
-}

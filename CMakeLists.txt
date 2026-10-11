@@ -1,13 +1,9 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 
-project(ASMMICVM C)
+project(ASMMICVM VERSION 1.0 LANGUAGES CXX)
 
-# Force C11 standard
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_STANDARD_REQUIRED ON)
-
-# Export compile_commands.json for LSP autocompletion and diagnostic tools
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -15,9 +11,9 @@ include_directories(
 )
 
 set(SOURCES
-    main.c
-    VM.c
-    Decoder/Decoder.c
+    main.cpp
+    VM.cpp
+    Decoder/Decoder.cpp
 )
 
 add_executable(ASMMICVM ${SOURCES})
