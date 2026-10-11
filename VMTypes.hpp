@@ -1,3 +1,4 @@
+#pragma once
 #include <string>
 #include <vector>
 #include <deque>
@@ -23,10 +24,6 @@ enum KeyWords {
   FALSE,
   Arr,
   ArrEND,
-  EndInstructionFlag,
-  EndExecutionFlag,
-  ChangeModeFlag,
-  StopFlag,
   LESSTHAN,
   GREATERTHAN,
   LESSEQUAL,
@@ -48,6 +45,9 @@ enum Instructions {
   OUTPUT,
   INPUT,
   MLC,
+  EndInstructionFlag,
+  EndExecutionFlag,
+  ChangeModeFlag,
 };
 struct RawMemoryAddress{
     std::string dat; 
@@ -70,11 +70,10 @@ struct VDT{
   std::deque<int> MAA; // Memory Adresses Assigned
   bool Immutable = false;  
 };
-
-extern int TotalMemoryDeclared; 
-extern std::stack<int> MemoryPool;  
-extern std::vector<BCToken> ByteCode; 
-extern int BCP;  
-
-extern std::unordered_map<int, VDT> IdentifierMap;
-
+namespace VMM{
+inline int TotalMemoryDeclared; 
+inline std::stack<int> MemoryPool;  
+inline std::vector<BCToken> ByteCode; 
+inline int BCP;  
+inline std::unordered_map<int, VDT> IdentifierMap;
+};

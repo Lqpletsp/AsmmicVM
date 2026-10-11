@@ -21,10 +21,6 @@ std::unordered_map<std::string, KeyWords> KeywordMap = {
     {"FALSE", FALSE},
     {"Arr", Arr},
     {"ArrEND", ArrEND},
-    {"EndInstructionFlag", EndInstructionFlag},
-    {"EndExecutionFlag", EndExecutionFlag},
-    {"ChangeModeFlag", ChangeModeFlag},
-    {"StopFlag", StopFlag},
     {"LESSTHAN", LESSTHAN},
     {"GREATERTHAN", GREATERTHAN},
     {"LESSEQUAL", LESSEQUAL},
@@ -40,10 +36,11 @@ std::unordered_map<std::string, KeyWords> KeywordMap = {
     {"EXPONENT", EXPONENT}
 };
 std::unordered_map<std::string,DataTypesForDecoder> DataTypesMap = {
-    {"INT", DataTypesForDecoder::INTEGER}, 
+    {"INTEGER", DataTypesForDecoder::INTEGER}, 
     {"CHAR", DataTypesForDecoder::CHAR},
     {"BOOLEAN", DataTypesForDecoder::BOOLEAN}, 
-    {"DOUBLE", DataTypesForDecoder::DOUBLE}
+    {"DOUBLE", DataTypesForDecoder::DOUBLE},
+    {"VID", DataTypesForDecoder::VID},
 };
 std::unordered_map<std::string, Instructions> InstructionsMap = {
     {"SET", SET}, 
@@ -51,14 +48,17 @@ std::unordered_map<std::string, Instructions> InstructionsMap = {
     {"INP", INPUT}, 
     {"GOTO", GOTOLN}, 
     {"MLC", MLC},
+    {"ChangeModeFlag", ChangeModeFlag},
+    {"EndExecutionFlag", EndExecutionFlag},
+    {"EndInstructionFlag", EndInstructionFlag},
 };
 using DTFD = DataTypesForDecoder;
 bool ValidateDataType(const std::string& dat, const DTFD dtp){
     try{
         std::stod(dat); 
         if (dtp == DTFD::VID){
-            auto it = IdentifierMap.find(std::stoi(dat));
-            if (it == IdentifierMap.end()) return false; 
+            auto it = VMM::IdentifierMap.find(std::stoi(dat));
+            if (it == VMM::IdentifierMap.end()) return false; 
         }
     } catch(...){
         if (dtp == DTFD::INTEGER || dtp == DTFD::DOUBLE || dtp == DTFD::VID) return false; 
@@ -87,13 +87,15 @@ rtrVal InitByteCode(const std::string& IR) {
                 if (it == InstructionsMap.end()) {
                     auto it2 = DataTypesMap.find(token); 
                     if (it2 == DataTypesMap.end())
-                        return {1, "SECURITY: Invalid IR format. Appropriate command not found"};
+                        return {1, "SECURITY: Invalid IR format\n\""+token+"\" command not found"};
                     DT = it2->second; 
+                    CommandMode = false; 
+                    token.clear();
                     continue;
                 }
                 BT.ByteCodeType = VMInstruction; 
                 BT.Sub_Type.Instruction = it->second; 
-                ByteCode.push_back(BT);  
+                VMM::ByteCode.push_back(BT);  
                 CommandMode = false; 
             } else{
                 auto it = KeywordMap.find(token); 
@@ -104,7 +106,7 @@ rtrVal InitByteCode(const std::string& IR) {
                     else BT.ByteCodeType = Constant; 
                     BT.LT = token; 
                 }
-                ByteCode.push_back(BT);
+                VMM::ByteCode.push_back(BT);
             }
             token.clear();
             if (ch == '\n') CommandMode = true;
@@ -112,7 +114,7 @@ rtrVal InitByteCode(const std::string& IR) {
             token.push_back(ch); 
         }
     }
-    BCP = 0; 
+    VMM::BCP = 0; 
     return {0, ""}; 
 }
 rtrVal InitVariables(const std::string &fc){
@@ -127,7 +129,7 @@ rtrVal InitVariables(const std::string &fc){
                 if (!ValidateDataType(token, DTFD::INTEGER)) 
                     return {.result = 1, .eval = "SECURITY: Invalid type for identifier ID"};
                 VariableID = std::stoi(token);
-                IdentifierMap[VariableID] = {};
+                VMM::IdentifierMap[VariableID] = {};
                 VIDToken = false; 
             } else {
                 if (token == "I") VariableDecl.Immutable = true; 
@@ -159,7 +161,7 @@ rtrVal InitVariables(const std::string &fc){
                 }
                 if (ch == '\n'){
                     try{
-                        IdentifierMap.at(VariableID) = VariableDecl;  
+                        VMM::IdentifierMap.at(VariableID) = VariableDecl;  
                     } catch(...){
                         return {.result = 1, .eval = "SECURITY: Undeclared VID initialized"};
                     }
@@ -199,9 +201,9 @@ rtrVal DecodeIR(const std::string& fp) {
 }
 rtrVal InitMemory(const std::string& fc){
     try{
-        TotalMemoryDeclared = std::stoi(fc); 
-        for (size_t i = TotalMemoryDeclared; i > 0; --i){
-            MemoryPool.push(i);
+        VMM::TotalMemoryDeclared = std::stoi(fc); 
+        for (size_t i = VMM::TotalMemoryDeclared; i > 0; --i){
+            VMM::MemoryPool.push(i);
         }
     } catch(...){
         return {.result = 1, .eval = "Memory declaration failed during sandbox initialization"};
@@ -226,10 +228,6 @@ int Decode_main(const std::string& dir_path) {
         std::cout << "Error opening directory \"" << dir_path << "\"\n"; 
         return 1; 
     }
-
-    // CheckList at 0:=Memory, 1:=Variables, 2:=IR
-    bool CheckList[3] = {false, false, false}; 
-
     for (const auto& entry : fs::directory_iterator(dir_path)) {
         if (!entry.is_regular_file()) continue;
 
@@ -248,50 +246,49 @@ int Decode_main(const std::string& dir_path) {
             return 1; 
         } 
 
-        std::cerr << "File recognized: " << filename << " \n";
-        std::string filepath = entry.path().string();
-
-        if (filename == "memory.dsm") {
-            rtrVal rtr = DecodeMemory(filepath); 
-            if (rtr.result > 0) {
-                std::cerr << rtr.eval; 
-                return 1;
-            }
-            CheckList[0] = true; 
-            std::cout << "[Memory decoding complete]\n";
-        }
-
-        else if (filename == "ir.dsm") {
-            if (!(CheckList[0] && CheckList[1])){
-                std::cerr << "SECURITY: Invalid format for decoding caused by invalid file placement\n";
-                return 1;
-            }
-            rtrVal rtr = DecodeIR(filepath);
-            if (rtr.result > 0) {
-                std::cerr << rtr.eval << '\n';
-                return 1;
-            }
-            CheckList[2] = true;
-            std::cout << "[IR decoding complete]\n";
-        } 
-        else if (filename == "variables.dsm") {
-            if (!CheckList[0]){
-                std::cerr << "SECURITY: Invalid format for decoding caused by invalid file placement\n";
-                return 1; 
-            }
-            rtrVal rtr = DecodeVariables(filepath);
-            if (rtr.result > 0){
-                std::cerr << rtr.eval << '\n'; 
-                return 1;
-            }
-            CheckList[1] = true;
-            std::cout << "[Variables decoding complete]\n";
-        } 
-        else {
+        if (filename != "memory.dsm" && filename != "variables.dsm" && filename != "ir.dsm") {
             std::cerr << "SECURITY: Directory does not conform to the rules of the VM decoder\n"; 
             return 1; 
         }
     }
+    // Checking the dir in the order: memory.dsm, variables.dsm, ir.dsm
+    fs::path mem_path = fs::path(dir_path) / "memory.dsm";
+    if (!fs::exists(mem_path) || !fs::is_regular_file(mem_path)) {
+        std::cerr << "SECURITY: Memory file not decoded\n";
+        return 1;
+    }
+    std::cerr << "File recognized: memory.dsm \n";
+    rtrVal rtr_mem = DecodeMemory(mem_path.string()); 
+    if (rtr_mem.result > 0) {
+        std::cerr << rtr_mem.eval; 
+        return 1;
+    }
+    std::cout << "[Memory decoding complete]\n";
+    fs::path var_path = fs::path(dir_path) / "variables.dsm";
+    if (!fs::exists(var_path) || !fs::is_regular_file(var_path)) {
+        std::cerr << "SECURITY: Variable file not decoded\n";
+        return 1;
+    }
+    std::cerr << "File recognized: variables.dsm \n";
+    rtrVal rtr_var = DecodeVariables(var_path.string());
+    if (rtr_var.result > 0) {
+        std::cerr << rtr_var.eval << '\n'; 
+        return 1;
+    }
+    std::cout << "[Variables decoding complete]\n";
+    fs::path ir_path = fs::path(dir_path) / "ir.dsm";
+    if (!fs::exists(ir_path) || !fs::is_regular_file(ir_path)) {
+        std::cerr << "SECURITY: IR file not decoded\n";
+        return 1;
+    }
+    std::cerr << "File recognized: ir.dsm \n";
+    rtrVal rtr_ir = DecodeIR(ir_path.string());
+    if (rtr_ir.result > 0) {
+        std::cerr << rtr_ir.eval << '\n'; 
+        return 1;
+    }
+    std::cout << "[IR decoding complete]\n";
+
     std::cout << "[All checks passed]\n";
     return 0; 
 }
