@@ -12,7 +12,7 @@ include_directories(
 
 set(SOURCES
     main.cpp
-    VM.cpp
+    VirtualMachine/VM.cpp
     Decoder/Decoder.cpp
 )
 

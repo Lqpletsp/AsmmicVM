@@ -1,229 +1,49 @@
+#include "Decoder.hpp"
 #include <iostream>
-#include <fstream>
-#include <string>
-#include <unordered_map>
-#include <vector>
 #include <filesystem>
-#include "../VMTypes.hpp"
+#include <fstream>
+#include "../DTP.hpp"
 
 namespace fs = std::filesystem;
-namespace{
-enum class DataTypesForDecoder{
-  INTEGER, 
-  CHAR, 
-  STRING, 
-  VID, 
-  BOOLEAN,   
-  DOUBLE,
-};
-std::unordered_map<std::string, KeyWords> KeywordMap = {
-    {"TRUE", TRUE},
-    {"FALSE", FALSE},
-    {"Arr", Arr},
-    {"ArrEND", ArrEND},
-    {"LESSTHAN", LESSTHAN},
-    {"GREATERTHAN", GREATERTHAN},
-    {"LESSEQUAL", LESSEQUAL},
-    {"GREATEREQUAL", GREATEREQUAL},
-    {"EQUAL", EQUAL},
-    {"NOTEQUAL", NOTEQUAL},
-    {"AND", AND},
-    {"OR", OR},
-    {"ADD", ADD},
-    {"MINUS", MINUS},
-    {"MULTIPLY", MULTIPLY},
-    {"DIVIDE", DIVIDE},
-    {"EXPONENT", EXPONENT}
-};
-std::unordered_map<std::string,DataTypesForDecoder> DataTypesMap = {
-    {"INTEGER", DataTypesForDecoder::INTEGER}, 
-    {"CHAR", DataTypesForDecoder::CHAR},
-    {"BOOLEAN", DataTypesForDecoder::BOOLEAN}, 
-    {"DOUBLE", DataTypesForDecoder::DOUBLE},
-    {"VID", DataTypesForDecoder::VID},
-};
-std::unordered_map<std::string, Instructions> InstructionsMap = {
-    {"SET", SET}, 
-    {"OUT", OUTPUT},
-    {"INP", INPUT}, 
-    {"GOTO", GOTOLN}, 
-    {"MLC", MLC},
-    {"ChangeModeFlag", ChangeModeFlag},
-    {"EndExecutionFlag", EndExecutionFlag},
-    {"EndInstructionFlag", EndInstructionFlag},
-};
-using DTFD = DataTypesForDecoder;
-bool ValidateDataType(const std::string& dat, const DTFD dtp){
-    try{
-        std::stod(dat); 
-        if (dtp == DTFD::VID){
-            auto it = VMM::IdentifierMap.find(std::stoi(dat));
-            if (it == VMM::IdentifierMap.end()) return false; 
-        }
-    } catch(...){
-        if (dtp == DTFD::INTEGER || dtp == DTFD::DOUBLE || dtp == DTFD::VID) return false; 
-        else if (!((dat == "T" || dat == "F") && dtp == DTFD::BOOLEAN)) return false; 
-        else if (!(dtp == DTFD::CHAR && dat.size() == 1)) return false;   
-    }
-    // this function also needs to validate if dtp is VID, whether dat is a valid variable ID or not
 
-    return true;
-}
-} // namespace
-struct rtrVal {
-    int result; 
-    std::string eval;
-};
-rtrVal InitByteCode(const std::string& IR) {
-    bool CommandMode = true;
-    std::string token;
-    DTFD DT; 
-    for (size_t i = 0; i < IR.size(); ++i) {
-        char ch = IR.at(i);
-        BCToken BT; 
-        if (ch == ' ' || ch == '\n') {
-            if (CommandMode) {
-                auto it = InstructionsMap.find(token); 
-                if (it == InstructionsMap.end()) {
-                    auto it2 = DataTypesMap.find(token); 
-                    if (it2 == DataTypesMap.end())
-                        return {1, "SECURITY: Invalid IR format\n\""+token+"\" command not found"};
-                    DT = it2->second; 
-                    CommandMode = false; 
-                    token.clear();
-                    continue;
-                }
-                BT.ByteCodeType = VMInstruction; 
-                BT.Sub_Type.Instruction = it->second; 
-                VMM::ByteCode.push_back(BT);  
-                CommandMode = false; 
-            } else{
-                auto it = KeywordMap.find(token); 
-                if (it == KeywordMap.end()){ 
-                    if (!ValidateDataType(token, DT)) 
-                        return {1,"SECURITY: Invalid type for IR when decoding"};
-                    if (DT == DTFD::VID) BT.ByteCodeType = Identifier;
-                    else BT.ByteCodeType = Constant; 
-                    BT.LT = token; 
-                }
-                VMM::ByteCode.push_back(BT);
-            }
-            token.clear();
-            if (ch == '\n') CommandMode = true;
-        } else {
-            token.push_back(ch); 
-        }
-    }
-    VMM::BCP = 0; 
-    return {0, ""}; 
-}
-rtrVal InitVariables(const std::string &fc){
-    bool VIDToken = true; 
-    VDT VariableDecl;  
-    int  VariableID;
-    std::string token; 
-    for (size_t i = 0; i < fc.size(); ++i){
-        char ch = fc.at(i); 
-        if (ch == ' ' || ch == '\n'){
-            if (VIDToken){
-                if (!ValidateDataType(token, DTFD::INTEGER)) 
-                    return {.result = 1, .eval = "SECURITY: Invalid type for identifier ID"};
-                VariableID = std::stoi(token);
-                VMM::IdentifierMap[VariableID] = {};
-                VIDToken = false; 
-            } else {
-                if (token == "I") VariableDecl.Immutable = true; 
-                else if (token == "M") VariableDecl.Immutable = false; 
-                else{
-                    auto it = DataTypesMap.find(token);
-                    if (it == DataTypesMap.end()) 
-                        return {.result = 0, .eval = "SECURITY: Invalid type for identifier"};
-                    switch(it->second){
-                        case (DTFD::BOOLEAN): 
-                            VariableDecl.DT = BOOLEAN; 
-                            break; 
-                        case (DTFD::CHAR): 
-                            VariableDecl.DT = CHAR; 
-                            break;
-                        case (DTFD::INTEGER): 
-                            VariableDecl.DT = INTEGER; 
-                            break;
-                        case (DTFD::DOUBLE): 
-                            VariableDecl.DT = DOUBLE;  
-                            break;
-                        case (DTFD::STRING): 
-                            return {.result = 0, .eval = "SECURITY: Invalid type of \"STRING\" for identifiers"};
-                            break;
-                        case (DTFD::VID): 
-                            return {.result = 1, .eval = "SECURITY: Invalid type of \"VID\" for identifiers"};
-                            break;
-                    }  
-                }
-                if (ch == '\n'){
-                    try{
-                        VMM::IdentifierMap.at(VariableID) = VariableDecl;  
-                    } catch(...){
-                        return {.result = 1, .eval = "SECURITY: Undeclared VID initialized"};
-                    }
-                    VIDToken = true;
-                }
-            }
-        } else {
-            token.push_back(ch);
-        }
-    }
-    return {0,""};
-}
-rtrVal DecodeVariables(const std::string& fp){
+DF::rtrVal DF::Decoder::DecodeVariables(const std::string& fp){
     std::ifstream file(fp); 
     if (!file.is_open()) 
         return {1, "Cannot open file\n"}; 
 
-    std::string file_contents((std::istreambuf_iterator<char>(file)),
-                               std::istreambuf_iterator<char>());
+    DecodedVariable = std::string(
+        (std::istreambuf_iterator<char>(file)),
+        std::istreambuf_iterator<char>()
+    );
     file.close();
-    rtrVal returned = InitVariables(file_contents); 
-    if (returned.result > 0) return returned; 
     return {0, ""}; 
 }
 
-rtrVal DecodeIR(const std::string& fp) {
+DF::rtrVal DF::Decoder::DecodeIR(const std::string& fp) {
     std::ifstream file(fp); 
-    if (!file.is_open()) 
+    if (!file.is_open()) {
         return {1, "Cannot open file\n"}; 
+    }
 
-    std::string file_contents((std::istreambuf_iterator<char>(file)),
-                               std::istreambuf_iterator<char>());
+    DecodedIR = std::string(
+        (std::istreambuf_iterator<char>(file)),
+        std::istreambuf_iterator<char>()
+    );
     file.close();
-    rtrVal returned = InitByteCode(file_contents); 
-    if (returned.result > 0) return returned; 
     return {0, ""}; 
 }
-rtrVal InitMemory(const std::string& fc){
-    try{
-        VMM::TotalMemoryDeclared = std::stoi(fc); 
-        for (size_t i = VMM::TotalMemoryDeclared; i > 0; --i){
-            VMM::MemoryPool.push(i);
-        }
-    } catch(...){
-        return {.result = 1, .eval = "Memory declaration failed during sandbox initialization"};
-    }
-    return {0};
-}
-rtrVal DecodeMemory(const std::string& fp) {
+
+DF::rtrVal DF::Decoder::DecodeMemory(const std::string& fp) {
     std::ifstream file(fp); 
-    if (!file.is_open()) return {1, "Cannot open file\n"}; 
-    
-    std::string buffer; 
-    if (!(file >> buffer))
+    if (!file.is_open()) {
+        return {1, "Cannot open file\n"}; 
+    }
+    if (!(file >> DecodedMemory)) {
         return {1, "SECURITY: Memory file empty\n"}; 
-    
-    rtrVal rtr = InitMemory(buffer);
-    if (rtr.result > 0) return rtr;
+    }
     return {0, ""};
 }
-
-int Decode_main(const std::string& dir_path) {
+int DF::Decoder::Decode_main(const std::string& dir_path) {
     if (!fs::exists(dir_path) || !fs::is_directory(dir_path)) {
         std::cout << "Error opening directory \"" << dir_path << "\"\n"; 
         return 1; 
@@ -251,7 +71,7 @@ int Decode_main(const std::string& dir_path) {
             return 1; 
         }
     }
-    // Checking the dir in the order: memory.dsm, variables.dsm, ir.dsm
+    // Checking the dir in the order: memory.dsm, variables.dsm, and then ir.dsm
     fs::path mem_path = fs::path(dir_path) / "memory.dsm";
     if (!fs::exists(mem_path) || !fs::is_regular_file(mem_path)) {
         std::cerr << "SECURITY: Memory file not decoded\n";
@@ -291,4 +111,22 @@ int Decode_main(const std::string& dir_path) {
 
     std::cout << "[All checks passed]\n";
     return 0; 
+}
+
+int DF::Decoder::GenerateByteCode(){
+    if (!DecodedVariable.empty() && DecodedMemory.empty()) {
+        std::cerr << "SECURITY: Variable declaration present but memory was not declared";
+        return 1; 
+    }
+    return 0;
+}
+
+DF::rtrVal DF::Decoder::iniMemory(){
+    try{
+        int mem = std::stoi(DecodedMemory);
+        
+    } catch(...){
+        return {1, "SECURITY: Failed to initialize sandbox memory"};
+    }
+    return {0};
 }
