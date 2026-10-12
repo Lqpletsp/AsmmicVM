@@ -1,5 +1,7 @@
 #pragma once 
 #include <string>
+#include <vector>
+
 namespace Dat{
     enum BCT { // BCT -> Bytecode Types
     Constant,
@@ -13,6 +15,7 @@ namespace Dat{
     DOUBLE,
     BOOLEAN,
     CHAR,
+    STRING, 
     };
 
     enum KeyWords {
@@ -38,6 +41,8 @@ namespace Dat{
     enum Instructions {
     SET,
     GOTOLN,
+    DECV, 
+    DECM,
     OUTPUT,
     INPUT,
     MLC,
@@ -55,5 +60,8 @@ namespace Dat{
             DataTypes DT; 
         } Sub_TType;
     };
+
+    inline std::vector<ByteCodeType> ByteCode;
+
 
 };
