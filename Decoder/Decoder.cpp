@@ -4,13 +4,15 @@
 #include <fstream>
 #include <unordered_map>
 #include "../DTP.hpp"
+
+
+namespace fs = std::filesystem;
+namespace DF{
 // getters 
 std::unordered_map<int, Dat::VDT> *DF::Decoder::GetIdenTable(){return &IdenMap;}
 int DF::Decoder::GetMemoryDeclared(){return MemoryDeclared;}
 
-namespace fs = std::filesystem;
-
-DF::rtrVal DF::Decoder::DecodeMemory(const std::string &fp){
+rtrVal Decoder::DecodeMemory(const std::string &fp){
     std::ifstream file(fp);
     if (!file.is_open()){
         return {1, "[Cannot open file]\n"}; 
@@ -22,7 +24,7 @@ DF::rtrVal DF::Decoder::DecodeMemory(const std::string &fp){
     file.close();
     return {0, ""}; 
 }
-DF::rtrVal DF::Decoder::DecodeIR(const std::string& fp) {
+rtrVal Decoder::DecodeIR(const std::string& fp) {
     std::ifstream file(fp); 
     if (!file.is_open()) {
         return {1, "[Cannot open file]\n"}; 
@@ -35,7 +37,7 @@ DF::rtrVal DF::Decoder::DecodeIR(const std::string& fp) {
     file.close();
     return {0, ""}; 
 }
-DF::rtrVal DF::Decoder::DecodeVar(const std::string& fp) {
+rtrVal Decoder::DecodeVar(const std::string& fp) {
     std::ifstream file(fp); 
     if (!file.is_open()) {
         return {1, "[Cannot open file\n]"}; 
@@ -50,7 +52,7 @@ DF::rtrVal DF::Decoder::DecodeVar(const std::string& fp) {
 }
 
 
-int DF::Decoder::Decode_main(const std::string& dir_path) {
+int Decoder::Decode_main(const std::string& dir_path) {
     if (!fs::exists(dir_path) || !fs::is_directory(dir_path)) {
         std::cout << "]Error opening directory \"" << dir_path << "\"]\n"; 
         return 1; 
@@ -84,7 +86,7 @@ int DF::Decoder::Decode_main(const std::string& dir_path) {
         return 1;
     }
     std::cerr << "[File recognized: memory.dsm]\n";
-    DF::rtrVal rtr= DF::Decoder::DecodeMemory(path.string());
+    rtrVal rtr = Decoder::DecodeMemory(path.string());
     if (rtr.result > 0) {
         std::cerr << rtr.eval << '\n'; 
         return 1;
@@ -97,7 +99,7 @@ int DF::Decoder::Decode_main(const std::string& dir_path) {
         return 1;
     }
     std::cerr << "[File recognized: variable.dsm]\n";
-    rtr = DF::Decoder::DecodeVar(path.string());
+    rtr = Decoder::DecodeVar(path.string());
     if (rtr.result > 0) {
         std::cerr << rtr.eval << '\n'; 
         return 1;
@@ -110,7 +112,7 @@ int DF::Decoder::Decode_main(const std::string& dir_path) {
         return 1;
     }
     std::cerr << "[File recognized: ir.dsm]\n";
-    rtr = DF::Decoder::DecodeIR(path.string());
+    rtr = Decoder::DecodeIR(path.string());
     if (rtr.result > 0) {
         std::cerr << rtr.eval << '\n'; 
         return 1;
@@ -119,24 +121,24 @@ int DF::Decoder::Decode_main(const std::string& dir_path) {
 
     return 0; 
 }
-bool DF::Decoder::ValidateTypes(std::string &Data, DTFD DTP){
+bool Decoder::ValidateTypes(std::string &Data, DTFD DTP){
     try{
         std::stod(Data);
-        if (DTP == DF::DTFD::BOOLEAN) return false; 
-        if (DTP == DF::DTFD::CHAR && Data.size() > 1) return false;  
+        if (DTP == DTFD::BOOLEAN) return false; 
+        if (DTP == DTFD::CHAR && Data.size() > 1) return false;  
     } catch(...){
-        if (DTP == DF::DTFD::INTEGER || DTP == DF::DTFD::DOUBLE || DTP == DF::DTFD::VID)  return false; 
-        if (DTP == DF::DTFD::BOOLEAN  && (Data != "T" && Data != "F")) return false; 
-        if (DTP == DF::DTFD::CHAR && Data.size() != 1) return false; 
+        if (DTP == DTFD::INTEGER || DTP == DTFD::DOUBLE || DTP == DTFD::VID)  return false; 
+        if (DTP == DTFD::BOOLEAN  && (Data != "T" && Data != "F")) return false; 
+        if (DTP == DTFD::CHAR && Data.size() != 1) return false; 
     }
     return true; 
 }
-bool DF::Decoder::ValidateVID(int VarID){
+bool Decoder::ValidateVID(int VarID){
     auto it = IdenMap.find(VarID); 
     if (it == IdenMap.end()) return false; 
     return true;
 }
-DF::rtrVal DF::Decoder::iniVar(){
+rtrVal Decoder::iniVar(){
     bool IDMode = true;
     bool Immutable = false; 
     Dat::VDT Variable; 
@@ -145,41 +147,41 @@ DF::rtrVal DF::Decoder::iniVar(){
     for (const char ch : DecodedVariable){
         if (ch == ' ' || ch == '\n'){
             if (IDMode){
-                if (!ValidateTypes(token, DF::DTFD::INTEGER))  
+                if (!ValidateTypes(token, DTFD::INTEGER))  
                     return {1,
                  "[SECURITY: Non integer value was given for variable ID during identifier initialization]"};
                 ID = std::stoi(token); 
             } else {
                 if (ID == -1) return {1, "[SECURITY: Invalid variable file syntax]"}; 
-                auto it = DF::DataTypesMap.find(token); 
-                if (it == DF::DataTypesMap.end()) 
+                auto it =DataTypesMap.find(token); 
+                if (it == DataTypesMap.end()) 
                     return {1, "[SECURITY: Unrecognized type \"" + token + "\" given]"}; 
                 switch(it->second){
-                    case DF::DTFD::BOOLEAN:
+                    case DTFD::BOOLEAN:
                         Variable.DT = Dat::BOOLEAN; 
                         break; 
-                    case DF::DTFD::DOUBLE: 
+                    case DTFD::DOUBLE: 
                         Variable.DT = Dat::DOUBLE; 
                         break;
-                    case DF::DTFD::CHAR:
+                    case DTFD::CHAR:
                         Variable.DT = Dat::CHAR; 
                         break; 
-                    case DF::DTFD::INTEGER:
+                    case DTFD::INTEGER:
                         Variable.DT = Dat::INTEGER; 
                         break; 
-                    case DF::DTFD::IINTEGER: 
+                    case DTFD::IINTEGER: 
                         Variable.DT = Dat::INTEGER; 
                         Immutable = true; 
                         break; 
-                    case DF::DTFD::IBOOLEAN: 
+                    case DTFD::IBOOLEAN: 
                         Variable.DT = Dat::BOOLEAN; 
                         Immutable = true; 
                         break; 
-                    case DF::DTFD::ICHAR: 
+                    case DTFD::ICHAR: 
                         Variable.DT = Dat::CHAR;
                         Immutable = true; 
                         break; 
-                    case DF::DTFD::IDOUBLE: 
+                    case DTFD::IDOUBLE: 
                         Variable.DT = Dat::DOUBLE; 
                         Immutable = true; 
                         break;
@@ -198,39 +200,39 @@ DF::rtrVal DF::Decoder::iniVar(){
     }
     return {0};
 }
-DF::rtrVal DF::Decoder::iniIR(){
+rtrVal Decoder::iniIR(){
     if (DecodedIR.empty()) return {0};
     bool CommandMode = true, VID = false;  
     std::string token; 
     Dat::ByteCodeType BT; 
-    DF::DTFD DT; 
+    DTFD DT; 
     Dat::DataTypes BCType; 
     for (const char ch: DecodedIR){
         if (ch == ' ' || ch == '\n'){
             if (CommandMode){
-                auto it = DF::InstMap.find(token); 
-                if (it == DF::InstMap.end()){
-                    auto it = DF::DataTypesMap.find(token); 
-                    if (it == DF::DataTypesMap.end()) {
+                auto it = InstMap.find(token); 
+                if (it == InstMap.end()){
+                    auto it = DataTypesMap.find(token); 
+                    if (it == DataTypesMap.end()) {
                         return {1,"[SECURITY: Command \"" + token + "\" not found]" };
                     }
                     switch (it->second) {
-                        case DF::DTFD::BOOLEAN: 
+                        case DTFD::BOOLEAN: 
                             BCType = Dat::BOOLEAN; 
                             break; 
-                        case DF::DTFD::INTEGER:
+                        case DTFD::INTEGER:
                             BCType = Dat::INTEGER; 
                             break; 
-                        case DF::DTFD::CHAR: 
+                        case DTFD::CHAR: 
                             BCType = Dat::CHAR; 
                             break; 
-                        case DF::DTFD::STRING: 
+                        case DTFD::STRING: 
                             BCType = Dat::STRING; 
                             break; 
-                        case DF::DTFD::VID: 
+                        case DTFD::VID: 
                             VID = true; 
                             break;
-                        case DF::DTFD::DOUBLE: 
+                        case DTFD::DOUBLE: 
                             BCType = Dat::DOUBLE; 
                             break;
                         default: 
@@ -270,15 +272,15 @@ DF::rtrVal DF::Decoder::iniIR(){
     }
     return {0};
 }
-DF::rtrVal DF::Decoder::iniMemory(){
+rtrVal Decoder::iniMemory(){
     try{
-        DF::Decoder::MemoryDeclared = std::stoi(DecodedMemory); 
+        MemoryDeclared = std::stoi(DecodedMemory); 
     } catch(...){
         return {1, "[SECURITY: Memory value should be of type INTEGER, but was not given]"};
     }
     return {0};
 }
-int DF::Decoder::GenerateByteCode(){ 
+int Decoder::GenerateByteCode(){ 
     rtrVal rtr = iniMemory(); 
     if (rtr.result > 0){
         std::cerr << rtr.eval << '\n';
@@ -297,8 +299,9 @@ int DF::Decoder::GenerateByteCode(){
     return 0;
 }
 
-void DF::Decoder::CleanUp(){
+void Decoder::CleanUp(){
     std::string().swap(DecodedIR); 
     std::string().swap(DecodedMemory); 
     std::string().swap(DecodedVariable); 
+}
 }
