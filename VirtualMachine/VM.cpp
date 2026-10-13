@@ -2,14 +2,18 @@
 
 bool VMF::VirtualMachine::iniMemmory(int x){
     try{
-       TotalMemoryDeclared = x; 
+       VMF::VirtualMachine::TotalMemoryDeclared = x; 
        for (size_t i = TotalMemoryDeclared; i > 0; --i){
-            VirtualVolatileMemory.push_back({});
-            g_MemoryPool.push(i);
+            VMF::VirtualMachine::VirtualVolatileMemory.push_back({});
+            VMF::VirtualMachine::g_MemoryPool.push(i);
        }
-       BCP = 0; 
+       VMF::VirtualMachine::BCP = 0; 
     } catch(...){
         return false; 
     }
     return true; 
+}
+
+void VMF::VirtualMachine::SetIdentifierMap(std::unordered_map<int, Dat::VDT> *Map){
+    IdentifierMap = Map;
 }

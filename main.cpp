@@ -12,7 +12,11 @@ int main(int argc, char *argv[]){
     int x = Decoder_main.Decode_main(argv[1]);
     if (x > 1) return 1; 
     Decoder_main.GenerateByteCode(); 
-    VMF::VirtualMachine VirtualMachine_main; 
+    std::cout << "[BRIDGE: Bytecode generation complete]";
+
+    VMF::VirtualMachine VirtualMachine_main;
+    VirtualMachine_main.iniMemmory(Decoder_main.GetMemoryDeclared());
+    VirtualMachine_main.SetIdentifierMap(Decoder_main.GetIdenTable());
 
     return 0; 
 }

@@ -10,6 +10,10 @@ namespace DF{
     };
     enum class DTFD{
         INTEGER, 
+        IINTEGER, 
+        IDOUBLE, 
+        IBOOLEAN, 
+        ICHAR,
         DOUBLE, 
         BOOLEAN, 
         CHAR, 
@@ -35,6 +39,10 @@ namespace DF{
         {"CHAR", DTFD::CHAR}, 
         {"STRING", DTFD::STRING}, 
         {"VID", DTFD::VID},
+        {"IINTEGER", DTFD::IINTEGER}, 
+        {"IDOUBLE", DTFD::IDOUBLE}, 
+        {"IBOOLEAN", DTFD::IBOOLEAN}, 
+        {"ICHAR", DTFD::ICHAR},
     };
     inline std::unordered_map<std::string, Dat::KeyWords> KeyWordMaps = {
         {"TRUE", Dat::TRUE}, 
@@ -54,20 +62,26 @@ namespace DF{
     };
     class Decoder{
         public: 
-            // attributes
-            std::string DecodedIR; 
-            std::string DecodedMemory; 
-            std::string DecodedVariable; 
-            int MemoryDeclared; 
             // methods
             int Decode_main(const std::string& dir_path); 
             int GenerateByteCode(); 
+            int GetMemoryDeclared(); 
+            std::unordered_map<int, Dat::VDT> *GetIdenTable(); 
         private: 
+            //attributes
+            std::string DecodedIR; 
+            std::string DecodedVariable; 
+            int MemoryDeclared; 
+            std::unordered_map<int, Dat::VDT> IdenMap; 
+            //methods
             // used by Decode_main
             rtrVal DecodeIR(const std::string &fp); 
+            rtrVal DecodeVar(const std::string &fp);
             // used by GenerateByteCode
             rtrVal iniIR(); 
+            rtrVal iniVar(); 
             bool ValidateTypes(std::string &Data, DTFD DTP);
+            bool ValidateVID(int VarID);
 
     };
 }
