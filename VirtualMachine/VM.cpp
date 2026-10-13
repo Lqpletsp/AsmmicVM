@@ -17,3 +17,5 @@ bool VMF::VirtualMachine::iniMemmory(int x){
 void VMF::VirtualMachine::SetIdentifierMap(std::unordered_map<int, Dat::VDT> *Map){
     IdentifierMap = Map;
 }
+
+void VMF::VirtualMachine::ExecuteByteCode(){} 

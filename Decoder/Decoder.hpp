@@ -66,6 +66,7 @@ namespace DF{
             int Decode_main(const std::string& dir_path); 
             int GenerateByteCode(); 
             int GetMemoryDeclared(); 
+            void CleanUp(); 
             std::unordered_map<int, Dat::VDT> *GetIdenTable(); 
         private: 
             //attributes

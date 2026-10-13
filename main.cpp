@@ -10,13 +10,21 @@ int main(int argc, char *argv[]){
     }
     DF::Decoder Decoder_main;
     int x = Decoder_main.Decode_main(argv[1]);
-    if (x > 1) return 1; 
-    Decoder_main.GenerateByteCode(); 
+    if (x > 0){ 
+        std::cerr << "[STOPPING NOW]";
+        return 1; 
+    }
+    x = Decoder_main.GenerateByteCode(); 
+    if (x > 0){ 
+        std::cerr << "[STOPPING NOW]";
+        return 1; 
+    }
+    Decoder_main.CleanUp();
     std::cout << "[BRIDGE: Bytecode generation complete]";
 
     VMF::VirtualMachine VirtualMachine_main;
     VirtualMachine_main.iniMemmory(Decoder_main.GetMemoryDeclared());
     VirtualMachine_main.SetIdentifierMap(Decoder_main.GetIdenTable());
-
+    VirtualMachine_main.ExecuteByteCode();
     return 0; 
 }

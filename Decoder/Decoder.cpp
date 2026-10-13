@@ -13,9 +13,9 @@ namespace fs = std::filesystem;
 DF::rtrVal DF::Decoder::DecodeMemory(const std::string &fp){
     std::ifstream file(fp);
     if (!file.is_open()){
-        return {1, "Cannot open file\n"}; 
+        return {1, "[Cannot open file]\n"}; 
     }
-    DecodedIR = std::string(
+    DecodedMemory = std::string(
         (std::istreambuf_iterator<char>(file)),
         std::istreambuf_iterator<char>()
     );
@@ -25,7 +25,7 @@ DF::rtrVal DF::Decoder::DecodeMemory(const std::string &fp){
 DF::rtrVal DF::Decoder::DecodeIR(const std::string& fp) {
     std::ifstream file(fp); 
     if (!file.is_open()) {
-        return {1, "Cannot open file\n"}; 
+        return {1, "[Cannot open file]\n"}; 
     }
 
     DecodedIR = std::string(
@@ -38,7 +38,7 @@ DF::rtrVal DF::Decoder::DecodeIR(const std::string& fp) {
 DF::rtrVal DF::Decoder::DecodeVar(const std::string& fp) {
     std::ifstream file(fp); 
     if (!file.is_open()) {
-        return {1, "Cannot open file\n"}; 
+        return {1, "[Cannot open file\n]"}; 
     }
 
     DecodedVariable = std::string(
@@ -52,7 +52,7 @@ DF::rtrVal DF::Decoder::DecodeVar(const std::string& fp) {
 
 int DF::Decoder::Decode_main(const std::string& dir_path) {
     if (!fs::exists(dir_path) || !fs::is_directory(dir_path)) {
-        std::cout << "Error opening directory \"" << dir_path << "\"\n"; 
+        std::cout << "]Error opening directory \"" << dir_path << "\"]\n"; 
         return 1; 
     }
     for (const auto& entry : fs::directory_iterator(dir_path)) {
@@ -62,28 +62,28 @@ int DF::Decoder::Decode_main(const std::string& dir_path) {
         std::string ext = entry.path().extension().string();
 
         if (ext.empty()) {
-            std::cerr << "SECURITY: Directory does not conform to the rules of the VM decoder\n"
+            std::cerr << "[SECURITY: Directory does not conform to the rules of the VM decoder]\n"
                       << "\"" << filename << "\" has no extension\n"; 
             return 1; 
         }
 
         if (ext != ".dsm") {
-            std::cerr << "SECURITY: Directory does not conform to the rules of the VM decoder\n"
+            std::cerr << "[SECURITY: Directory does not conform to the rules of the VM decoder]\n"
                       << "\"" << filename << "\" has an invalid extension\n"; 
             return 1; 
         } 
 
         if (filename != "memory.dsm" && filename != "variables.dsm" && filename != "ir.dsm") {
-            std::cerr << "SECURITY: Directory does not conform to the rules of the VM decoder\n"; 
+            std::cerr << "[SECURITY: Directory does not conform to the rules of the VM decoder]\n"; 
             return 1; 
         }
     }
     fs::path path = fs::path(dir_path) / "memory.dsm";
     if (!fs::exists(path) || !fs::is_regular_file(path)) {
-        std::cerr << "SECURITY: Memory file not decoded\n";
+        std::cerr << "[SECURITY: Memory file not decoded]\n";
         return 1;
     }
-    std::cerr << "File recognized: memory.dsm \n";
+    std::cerr << "[File recognized: memory.dsm]\n";
     DF::rtrVal rtr= DF::Decoder::DecodeMemory(path.string());
     if (rtr.result > 0) {
         std::cerr << rtr.eval << '\n'; 
@@ -91,12 +91,12 @@ int DF::Decoder::Decode_main(const std::string& dir_path) {
     }
     std::cout << "[Memory decoding complete]\n";
 
-    path = fs::path(dir_path) / "variable.dsm";
+    path = fs::path(dir_path) / "variables.dsm";
     if (!fs::exists(path) || !fs::is_regular_file(path)) {
-        std::cerr << "SECURITY: IR file not decoded\n";
+        std::cerr << "SECURITY: Variable file not decoded\n";
         return 1;
     }
-    std::cerr << "File recognized: variable.dsm \n";
+    std::cerr << "[File recognized: variable.dsm]\n";
     rtr = DF::Decoder::DecodeVar(path.string());
     if (rtr.result > 0) {
         std::cerr << rtr.eval << '\n'; 
@@ -106,10 +106,10 @@ int DF::Decoder::Decode_main(const std::string& dir_path) {
 
     path = fs::path(dir_path) / "ir.dsm";
     if (!fs::exists(path) || !fs::is_regular_file(path)) {
-        std::cerr << "SECURITY: IR file not decoded\n";
+        std::cerr << "[SECURITY: IR file not decoded]\n";
         return 1;
     }
-    std::cerr << "File recognized: ir.dsm \n";
+    std::cerr << "[File recognized: ir.dsm]\n";
     rtr = DF::Decoder::DecodeIR(path.string());
     if (rtr.result > 0) {
         std::cerr << rtr.eval << '\n'; 
@@ -145,15 +145,15 @@ DF::rtrVal DF::Decoder::iniVar(){
     for (const char ch : DecodedVariable){
         if (ch == ' ' || ch == '\n'){
             if (IDMode){
-                auto it = DF::DataTypesMap.find(token);
                 if (!ValidateTypes(token, DF::DTFD::INTEGER))  
-                    return {1, "Non integer value was given for variable ID during identifier initialization"};
+                    return {1,
+                 "[SECURITY: Non integer value was given for variable ID during identifier initialization]"};
                 ID = std::stoi(token); 
             } else {
-                if (ID == -1) return {1, "Invalid variable file syntax"}; 
+                if (ID == -1) return {1, "[SECURITY: Invalid variable file syntax]"}; 
                 auto it = DF::DataTypesMap.find(token); 
                 if (it == DF::DataTypesMap.end()) 
-                    return {1, "Unrecognized type \"" + token + "\" given"}; 
+                    return {1, "[SECURITY: Unrecognized type \"" + token + "\" given]"}; 
                 switch(it->second){
                     case DF::DTFD::BOOLEAN:
                         Variable.DT = Dat::BOOLEAN; 
@@ -184,12 +184,13 @@ DF::rtrVal DF::Decoder::iniVar(){
                         Immutable = true; 
                         break;
                     default: 
-                        return {1, "Unrecognized type \"" + token + "\" given"}; 
+                        return {1, "[SECURITY: Unrecognized type \"" + token + "\" given]"}; 
                 }
                 if (Immutable) Variable.Immutable = true; 
                 else Variable.Immutable = false; 
                 Variable.VID = ID; 
                 IdenMap[ID] = Variable;
+                ID = -1;
             } 
         } else { 
            token.push_back(ch); 
@@ -211,7 +212,7 @@ DF::rtrVal DF::Decoder::iniIR(){
                 if (it == DF::InstMap.end()){
                     auto it = DF::DataTypesMap.find(token); 
                     if (it == DF::DataTypesMap.end()) {
-                        return {1,"SECURITY: Command \"" + token + "\" not found" };
+                        return {1,"[SECURITY: Command \"" + token + "\" not found]" };
                     }
                     switch (it->second) {
                         case DF::DTFD::BOOLEAN: 
@@ -233,7 +234,7 @@ DF::rtrVal DF::Decoder::iniIR(){
                             BCType = Dat::DOUBLE; 
                             break;
                         default: 
-                            return {1, "Unidentified data type \"" + token + "\" used"};
+                            return {1, "[SECURITY: Unidentified data type \"" + token + "\" used]"};
                     }
                     token.clear();
                     CommandMode = false;
@@ -246,7 +247,7 @@ DF::rtrVal DF::Decoder::iniIR(){
                 CommandMode = false;
             } else {
                 if(!ValidateTypes(token, DT)){ 
-                    return {.result = 0, .eval = "SECURITY: Invalid data types for token"};
+                    return {.result = 0, .eval = "[SECURITY: Invalid data types for token]"};
                 }
                 BT.LT = token; 
                 if (VID){
@@ -254,8 +255,9 @@ DF::rtrVal DF::Decoder::iniIR(){
                         ValidateVID(std::stoi(token));
                         BT.TType = Dat::Identifier; 
                     } catch(...){
-                        return {.result = 0, .eval = "SECURITY: Expected INTEGER for variable ID but was not given"};
+                        return {.result = 0, .eval = "[SECURITY: Expected INTEGER for variable ID but was not given]"};
                     }
+                    VID = false; 
                 } else{
                     BT.TType = Dat::Constant;
                     BT.Sub_TType.DT = BCType;
@@ -270,9 +272,9 @@ DF::rtrVal DF::Decoder::iniIR(){
 }
 DF::rtrVal DF::Decoder::iniMemory(){
     try{
-        MemoryDeclared = std::stoi(DecodedMemory); 
+        DF::Decoder::MemoryDeclared = std::stoi(DecodedMemory); 
     } catch(...){
-        return {1, "Memory value should be of type INTEGER, but was not given"};
+        return {1, "[SECURITY: Memory value should be of type INTEGER, but was not given]"};
     }
     return {0};
 }
@@ -293,4 +295,10 @@ int DF::Decoder::GenerateByteCode(){
         return 1; 
     }
     return 0;
+}
+
+void DF::Decoder::CleanUp(){
+    std::string().swap(DecodedIR); 
+    std::string().swap(DecodedMemory); 
+    std::string().swap(DecodedVariable); 
 }
