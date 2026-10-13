@@ -4,9 +4,24 @@
 #include <fstream>
 #include <unordered_map>
 #include "../DTP.hpp"
+// getters 
+std::unordered_map<int, Dat::VDT> *DF::Decoder::GetIdenTable(){return &IdenMap;}
+int DF::Decoder::GetMemoryDeclared(){return MemoryDeclared;}
 
 namespace fs = std::filesystem;
 
+DF::rtrVal DF::Decoder::DecodeMemory(const std::string &fp){
+    std::ifstream file(fp);
+    if (!file.is_open()){
+        return {1, "Cannot open file\n"}; 
+    }
+    DecodedIR = std::string(
+        (std::istreambuf_iterator<char>(file)),
+        std::istreambuf_iterator<char>()
+    );
+    file.close();
+    return {0, ""}; 
+}
 DF::rtrVal DF::Decoder::DecodeIR(const std::string& fp) {
     std::ifstream file(fp); 
     if (!file.is_open()) {
@@ -63,18 +78,45 @@ int DF::Decoder::Decode_main(const std::string& dir_path) {
             return 1; 
         }
     }
-    fs::path ir_path = fs::path(dir_path) / "ir.dsm";
-    if (!fs::exists(ir_path) || !fs::is_regular_file(ir_path)) {
+    fs::path path = fs::path(dir_path) / "memory.dsm";
+    if (!fs::exists(path) || !fs::is_regular_file(path)) {
+        std::cerr << "SECURITY: Memory file not decoded\n";
+        return 1;
+    }
+    std::cerr << "File recognized: memory.dsm \n";
+    DF::rtrVal rtr= DF::Decoder::DecodeMemory(path.string());
+    if (rtr.result > 0) {
+        std::cerr << rtr.eval << '\n'; 
+        return 1;
+    }
+    std::cout << "[Memory decoding complete]\n";
+
+    path = fs::path(dir_path) / "variable.dsm";
+    if (!fs::exists(path) || !fs::is_regular_file(path)) {
+        std::cerr << "SECURITY: IR file not decoded\n";
+        return 1;
+    }
+    std::cerr << "File recognized: variable.dsm \n";
+    rtr = DF::Decoder::DecodeVar(path.string());
+    if (rtr.result > 0) {
+        std::cerr << rtr.eval << '\n'; 
+        return 1;
+    }
+    std::cout << "[Variable decoding complete]\n";
+
+    path = fs::path(dir_path) / "ir.dsm";
+    if (!fs::exists(path) || !fs::is_regular_file(path)) {
         std::cerr << "SECURITY: IR file not decoded\n";
         return 1;
     }
     std::cerr << "File recognized: ir.dsm \n";
-    rtrVal rtr_ir = DecodeIR(ir_path.string());
-    if (rtr_ir.result > 0) {
-        std::cerr << rtr_ir.eval << '\n'; 
+    rtr = DF::Decoder::DecodeIR(path.string());
+    if (rtr.result > 0) {
+        std::cerr << rtr.eval << '\n'; 
         return 1;
     }
     std::cout << "[IR decoding complete]\n";
+
     return 0; 
 }
 bool DF::Decoder::ValidateTypes(std::string &Data, DTFD DTP){
@@ -226,8 +268,21 @@ DF::rtrVal DF::Decoder::iniIR(){
     }
     return {0};
 }
+DF::rtrVal DF::Decoder::iniMemory(){
+    try{
+        MemoryDeclared = std::stoi(DecodedMemory); 
+    } catch(...){
+        return {1, "Memory value should be of type INTEGER, but was not given"};
+    }
+    return {0};
+}
 int DF::Decoder::GenerateByteCode(){ 
-    rtrVal rtr = iniVar(); 
+    rtrVal rtr = iniMemory(); 
+    if (rtr.result > 0){
+        std::cerr << rtr.eval << '\n';
+        return 1; 
+    }
+    rtr = iniVar(); 
     if (rtr.result > 0) {
         std::cerr << rtr.eval << '\n'; 
         return 1 ; 
@@ -239,6 +294,3 @@ int DF::Decoder::GenerateByteCode(){
     }
     return 0;
 }
-
-std::unordered_map<int, Dat::VDT> *DF::Decoder::GetIdenTable(){return &IdenMap;}
-int DF::Decoder::GetMemoryDeclared(){return MemoryDeclared;}

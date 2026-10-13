@@ -71,15 +71,18 @@ namespace DF{
             //attributes
             std::string DecodedIR; 
             std::string DecodedVariable; 
+            std::string DecodedMemory;
             int MemoryDeclared; 
             std::unordered_map<int, Dat::VDT> IdenMap; 
             //methods
             // used by Decode_main
             rtrVal DecodeIR(const std::string &fp); 
             rtrVal DecodeVar(const std::string &fp);
+            rtrVal DecodeMemory(const std::string &fp);
             // used by GenerateByteCode
             rtrVal iniIR(); 
             rtrVal iniVar(); 
+            rtrVal iniMemory();
             bool ValidateTypes(std::string &Data, DTFD DTP);
             bool ValidateVID(int VarID);
 
