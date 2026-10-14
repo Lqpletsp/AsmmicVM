@@ -16,7 +16,7 @@ namespace Dat{
     DOUBLE,
     BOOLEAN,
     CHAR,
-    STRING, 
+    STRING,
     };
 
     enum KeyWords {

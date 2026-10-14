@@ -25,6 +25,7 @@ int main(int argc, char *argv[]){
     VMF::VirtualMachine VirtualMachine_main;
     VirtualMachine_main.iniMemmory(Decoder_main.GetMemoryDeclared());
     VirtualMachine_main.SetIdentifierMap(Decoder_main.GetIdenTable());
-    VirtualMachine_main.ExecuteByteCode();
+    x = VirtualMachine_main.ExecuteByteCode();
+    if (x > 0) return 1;
     return 0; 
 }
