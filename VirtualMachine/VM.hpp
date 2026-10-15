@@ -64,6 +64,7 @@ namespace VMF{
                 StringDataInCBuffer, 
                 OutOfBoundsInIBuffer, 
                 OutOfBoundsInWBuffer, 
+                UnIdentifiedInstruction, 
             };
             const std::unordered_map<VMExceptions,std::string> ExceptionMessage{
                 {VMExceptions::EmptyCBuffer, "Computation buffer empty"},
@@ -72,7 +73,8 @@ namespace VMF{
                 {VMExceptions::RanOutOfVirtualVolatileMemory, "All virtual volatile memory used"},
                 {VMExceptions::StringDataInMemory, "String data cannot be stored in memory as a whole"},
                 {VMExceptions::OutOfBoundsInIBuffer, "Index given is out of bounds for IBuffer"},
-                {VMExceptions::OutOfBoundsInWBuffer, "Index given is out of bounds for WBuffer"}
+                {VMExceptions::OutOfBoundsInWBuffer, "Index given is out of bounds for WBuffer"}, 
+                {VMExceptions::UnIdentifiedInstruction, "Invalid bytecode instruction"}, 
             };
             void HandleException(VirtualMachine::VMExceptions exp); 
     };

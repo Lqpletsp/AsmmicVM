@@ -42,8 +42,6 @@ namespace Dat{
     enum Instructions {
     SET,
     GOTOLN,
-    DECV, 
-    DECM,
     OUTPUT,
     INPUT,
     MLC,

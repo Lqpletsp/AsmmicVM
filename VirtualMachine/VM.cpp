@@ -39,7 +39,6 @@ void VirtualMachine::ClearTopWBuffer(){
     ReallocVMemory(WBuffer.front());
     WBuffer.pop_front(); 
 }
-int VirtualMachine::ExecuteByteCode(){return 0;} 
 
 int VirtualMachine::GetTopWBufferAddress(){
     if (WBuffer.empty()) HandleException(VirtualMachine::VMExceptions::EmptyWBuffer);
@@ -158,4 +157,27 @@ void VirtualMachine::output(){
     std::cout << GetAddressData(GetTopIBufferAddress()); 
     ClearTopIBuffer(); 
 }
+int VirtualMachine::ExecuteByteCode(){
+    while (BCP < Dat::ByteCode.size()){
+        Dat::ByteCodeType BCT = Dat::ByteCode.at(BCP); 
+        switch(BCT.TType){
+            case (Dat::VMInstruction):{
+                switch(BCT.Sub_TType.VMInstruction){
+                    case Dat::OUTPUT: 
+                        output(); 
+                        break; 
+                    case Dat::SET: 
+                    case Dat::MLC: 
+                    case Dat::EndExecutionFlag: 
+                    case Dat::EndInstructionFlag: 
+                    case Dat::GOTOLN: 
+                    case Dat::INPUT: 
+                    case Dat::ChangeModeFlag:
+                        break;
+                }
+            }
+            default: break; 
+        }
+    }
+    return 0;} 
 }

@@ -23,8 +23,6 @@ namespace DF{
     inline std::unordered_map<std::string,Dat::Instructions> InstMap = {
         {"SET", Dat::SET},
         {"GOTOLN", Dat::GOTOLN}, 
-        {"DECV", Dat::DECV},
-        {"DECM", Dat::DECM}, 
         {"OUTPUT", Dat::OUTPUT}, 
         {"INPUT", Dat::INPUT}, 
         {"MLC", Dat::MLC}, 
