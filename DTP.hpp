@@ -40,11 +40,12 @@ namespace Dat{
     };
 
     enum Instructions {
-    SET,
+    SETV,
     GOTOLN,
     OUTPUT,
     INPUT,
     MLC,
+    SETB, 
     EndInstructionFlag,
     EndExecutionFlag,
     ChangeModeFlag,

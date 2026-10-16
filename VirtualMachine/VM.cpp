@@ -17,9 +17,9 @@ bool VirtualMachine::iniMemmory(int x){
     return true; 
 }
 void VirtualMachine::ReallocVMemory(int addr){g_MemoryPool.push(addr);}
-void VirtualMachine::AllocateMemoryInWBuffer(){WBuffer.push_back(AllocateMemory());}
-void VirtualMachine::AllocateMemoryInCBuffer(){CBuffer.push(AllocateMemory());}
-void VirtualMachine::AllocateMemoryInIBuffer(){IBuffer.push_back(AllocateMemory());}
+void VirtualMachine::AllocateMemoryInWBuffer(){WBuffer.push_back(GBuffer0);}
+void VirtualMachine::AllocateMemoryInCBuffer(){CBuffer.push(GBuffer1);}
+void VirtualMachine::AllocateMemoryInIBuffer(){IBuffer.push_back(GBuffer2);}
 Dat::RawMemoryAddress* VirtualMachine::GetMemorySpace(int Address){return  &VirtualVolatileMemory.at(Address);} 
 void VirtualMachine::SetIdentifierMap(std::unordered_map<int, Dat::VDT> *Map){IdentifierMap = Map;}
 
@@ -40,31 +40,31 @@ void VirtualMachine::ClearTopWBuffer(){
     WBuffer.pop_front(); 
 }
 
-int VirtualMachine::GetTopWBufferAddress(){
+void VirtualMachine::GetTopWBufferAddress(){
     if (WBuffer.empty()) HandleException(VirtualMachine::VMExceptions::EmptyWBuffer);
-    return WBuffer.front();
+    GBuffer1 = WBuffer.front(); 
 }
-int VirtualMachine::GetTopCBufferAdddress(){
+void VirtualMachine::GetTopCBufferAdddress(){
     if (CBuffer.empty()) HandleException(VirtualMachine::VMExceptions::EmptyCBuffer); 
-    return CBuffer.top(); 
+    GBuffer1 = CBuffer.top(); 
 }
-int VirtualMachine::GetTopIBufferAddress(){
+void VirtualMachine::GetTopIBufferAddress(){
     if (CBuffer.empty()) HandleException(VirtualMachine::VMExceptions::EmptyIBuffer); 
-    return IBuffer.front();
+    GBuffer1 = IBuffer.front(); 
 }
-int VirtualMachine::GetXIBufferAddress(int idx){
+void VirtualMachine::GetXIBufferAddress(int idx){
     if (idx >= IBuffer.size()) HandleException(VMExceptions::OutOfBoundsInIBuffer); 
-    return IBuffer.at(idx);
+    GBuffer1 = WBuffer.at(idx); 
 }
-int VirtualMachine::GetXWBufferAddress(int idx){
+void VirtualMachine::GetXWBufferAddress(int idx){
     if (idx >= WBuffer.size()) HandleException(VMExceptions::OutOfBoundsInWBuffer); 
-    return WBuffer.at(idx);
+    GBuffer1 = WBuffer.at(idx); 
 }
 
-int VirtualMachine::AllocateMemory(){
+void VirtualMachine::AllocateMemory(){
     if (g_MemoryPool.empty()) HandleException(VirtualMachine::VMExceptions::RanOutOfVirtualVolatileMemory); 
-    int addr = g_MemoryPool.top();
-    return addr; 
+    GBuffer0 = g_MemoryPool.top();
+    g_MemoryPool.pop(); 
 }
 void VirtualMachine::ClearCBuffer(){
     while (!CBuffer.empty()){
@@ -93,6 +93,7 @@ void VirtualMachine::StoreInIBuffer(const std::string &Data, const Dat::DataType
     VirtualVolatileMemory.at(IBuffer.back()).Data = Data; 
     VirtualVolatileMemory.at(IBuffer.back()).DT = DTP; 
 }
+
 void VirtualMachine::StoreInWBuffer(const std::string &Data, const Dat::DataTypes &DTP){
     AllocateMemoryInWBuffer(); 
     if (DTP == Dat::STRING) HandleException(VirtualMachine::VMExceptions::StringDataInWBuffer);
@@ -144,18 +145,25 @@ void VirtualMachine::BufferCleanUps(){
 void VirtualMachine::HandleException(VirtualMachine::VMExceptions exp){
     BufferCleanUps();
     LoadInIBuffer("[EXCP@BCP" + std::to_string(BCP) + "] : " + VirtualMachine::ExceptionMessage.at(exp), Dat::STRING);
-    LoadInWBuffer("0", Dat::INTEGER); 
-    LoadInWBuffer(std::to_string(VirtualMachine::ExceptionMessage.at(exp).size()), Dat::INTEGER); 
-    while (GetAddressData(GetXWBufferAddress(0)) != GetAddressData(GetXWBufferAddress(0))){
-        output(); 
-        VirtualVolatileMemory.at(GetXIBufferAddress(0)).Data = 
-        std::to_string(std::stoi(VirtualVolatileMemory.at(GetXIBufferAddress(0)).Data) + 1); 
+    GBuffer1 = std::string("[EXCP@BCP]" + std::to_string(BCP) + "] : ").size(); 
+    GBuffer2 = 0; 
+    GBuffer3 = VirtualMachine::ExceptionMessage.at(exp).size() + GBuffer1;
+    while (GBuffer2 != GBuffer3){
+        OUTPUT(); 
+        ++GBuffer2; 
     }
     std::exit(1);
 }
-void VirtualMachine::output(){
-    std::cout << GetAddressData(GetTopIBufferAddress()); 
+void VirtualMachine::GetByteCodeValue(){
+
+}
+void VirtualMachine::OUTPUT(){
+    GetTopIBufferAddress(); 
+    std::cout << GetAddressData(GBuffer1); 
     ClearTopIBuffer(); 
+}
+void VirtualMachine::SET_IN_BUFFER(){
+    ++BCP;
 }
 int VirtualMachine::ExecuteByteCode(){
     while (BCP < Dat::ByteCode.size()){
@@ -164,9 +172,10 @@ int VirtualMachine::ExecuteByteCode(){
             case (Dat::VMInstruction):{
                 switch(BCT.Sub_TType.VMInstruction){
                     case Dat::OUTPUT: 
-                        output(); 
+                        OUTPUT(); 
                         break; 
-                    case Dat::SET: 
+                    case Dat::SETV: 
+                    case Dat::SETB:
                     case Dat::MLC: 
                     case Dat::EndExecutionFlag: 
                     case Dat::EndInstructionFlag: 
@@ -178,6 +187,7 @@ int VirtualMachine::ExecuteByteCode(){
             }
             default: break; 
         }
+        ++BCP; 
     }
     return 0;} 
 }

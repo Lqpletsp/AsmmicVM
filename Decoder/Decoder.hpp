@@ -21,11 +21,12 @@ namespace DF{
         VID, 
     };
     inline std::unordered_map<std::string,Dat::Instructions> InstMap = {
-        {"SET", Dat::SET},
+        {"SETV", Dat::SETV},
         {"GOTOLN", Dat::GOTOLN}, 
         {"OUTPUT", Dat::OUTPUT}, 
         {"INPUT", Dat::INPUT}, 
         {"MLC", Dat::MLC}, 
+        {"SETB", Dat::SETB}, 
         {"EndInstructionFlag", Dat::EndInstructionFlag}, 
         {"EndExecutionFlag", Dat::EndExecutionFlag}, 
         {"ChangeModeFlag", Dat::ChangeModeFlag},
