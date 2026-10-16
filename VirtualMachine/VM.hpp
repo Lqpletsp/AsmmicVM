@@ -1,5 +1,6 @@
 #include <deque>
 #include <stack>
+#include <array>
 #include <unordered_map>
 #include "../DTP.hpp"
 namespace VMF{
@@ -25,25 +26,33 @@ namespace VMF{
             int GBuffer1 = 0; // General Buffer 1 
             int GBuffer2 = 0; // General Buffer 2
             int GBuffer3 = 0; // General Buffer 3 
+            Dat::VDT *VBuffer; // Variable Buffer
+            struct DPair{
+                std::array<char, 256> Data; 
+                Dat::DataTypes DTP; 
+            }; 
+            DPair DPBuffer; // Data Pair Buffer
             std::unordered_map<int, Dat::VDT> *IdentifierMap; 
             std::stack<int> g_MemoryPool;
             //methods
             void OUTPUT();
             void SET_IN_BUFFER(); 
+            void SET_IN_IDENTIFIER(); 
+            void CHANGE_BCP(); 
+            void INPUT(); 
+            void MLC(); 
             std::vector<Dat::RawMemoryAddress>* GetVariableMAA(int VID);
             Dat::RawMemoryAddress* GetMemorySpace(int Address); 
             void GetByteCodeValue();
-            void StoreInIBuffer(const std::string &Data, const Dat::DataTypes &DTP); // for non string values  
-            void StoreInWBuffer(const std::string &Data, const Dat::DataTypes &DTP); // for non string values 
-            void StoreInCBuffer(const std::string &Data, const Dat::DataTypes &DTP); // for non string values 
-            void StoreInAddr(const std::string &Data, const Dat::DataTypes &DTP, const int addr); 
-            void LoadInWBuffer(const std::string &Data, const Dat::DataTypes &DTP); // for all types of values
-            void LoadInIBuffer(const std::string &Data, const Dat::DataTypes &DTP); // for all types of values
-            void LoadInCBuffer(const std::string &Data, const Dat::DataTypes &DTP); // for all types of values
+            void StoreInAddr(); 
+            void LoadInWBuffer(); // for all types of values
+            void LoadInIBuffer(); // for all types of values
+            void LoadInCBuffer(); // for all types of values
+            void LoadBCInWBuffer(); 
             void AllocateMemoryInCBuffer(); 
             void AllocateMemoryInWBuffer(); 
             void AllocateMemoryInIBuffer(); 
-            void ReallocVMemory(int addr);
+            void ReallocVMemory();
             void ClearIBuffer(); 
             void ClearWBuffer(); 
             void ClearCBuffer();
@@ -56,9 +65,8 @@ namespace VMF{
             void GetTopWBufferAddress();
             void GetTopIBufferAddress(); 
             void GetTopCBufferAdddress(); 
-            void GetXWBufferAddress(int idx); 
-            void GetXIBufferAddress(int idx); 
-            std::string GetAddressData(int address); 
+            void GetXWBufferAddress(); 
+            void GetXIBufferAddress(); 
             // exceptions
             enum class VMExceptions{
                 EmptyWBuffer, 
@@ -72,6 +80,7 @@ namespace VMF{
                 OutOfBoundsInIBuffer, 
                 OutOfBoundsInWBuffer, 
                 UnIdentifiedInstruction, 
+                AttemptedAccessToUninitializedVariable, 
             };
             const std::unordered_map<VMExceptions,std::string> ExceptionMessage{
                 {VMExceptions::EmptyCBuffer, "Computation buffer empty"},
@@ -85,6 +94,7 @@ namespace VMF{
                 {VMExceptions::StringDataInCBuffer, "String data cannot be stored in CBuffer as a whole"}, 
                 {VMExceptions::StringDataInIBuffer, "String data cannot be stored in IBuffer as a whole"}, 
                 {VMExceptions::StringDataInWBuffer, "String data cannot be stored in WBuffer as a whole"},
+                {VMExceptions::AttemptedAccessToUninitializedVariable, "Identifier attempted to access is uninitialized"},
             };
             void HandleException(VirtualMachine::VMExceptions exp); 
     };

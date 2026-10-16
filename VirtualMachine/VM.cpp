@@ -2,6 +2,7 @@
 #include "DTP.hpp"
 #include <iostream>
 #include <cstdlib>
+#include <cstring>
 namespace VMF{
 bool VirtualMachine::iniMemmory(int x){
     try{
@@ -16,27 +17,30 @@ bool VirtualMachine::iniMemmory(int x){
     }
     return true; 
 }
-void VirtualMachine::ReallocVMemory(int addr){g_MemoryPool.push(addr);}
-void VirtualMachine::AllocateMemoryInWBuffer(){WBuffer.push_back(GBuffer0);}
+void VirtualMachine::ReallocVMemory(){g_MemoryPool.push(GBuffer1);}
+void VirtualMachine::AllocateMemoryInWBuffer(){WBuffer.push_back(GBuffer1);}
 void VirtualMachine::AllocateMemoryInCBuffer(){CBuffer.push(GBuffer1);}
-void VirtualMachine::AllocateMemoryInIBuffer(){IBuffer.push_back(GBuffer2);}
+void VirtualMachine::AllocateMemoryInIBuffer(){IBuffer.push_back(GBuffer1);}
 Dat::RawMemoryAddress* VirtualMachine::GetMemorySpace(int Address){return  &VirtualVolatileMemory.at(Address);} 
 void VirtualMachine::SetIdentifierMap(std::unordered_map<int, Dat::VDT> *Map){IdentifierMap = Map;}
 
 void VirtualMachine::ClearTopCBuffer(){
     if (CBuffer.empty()) HandleException(VirtualMachine::VMExceptions::EmptyCBuffer); 
-    ReallocVMemory(CBuffer.top());
+    GBuffer1 = CBuffer.top();
+    ReallocVMemory();
     CBuffer.pop(); 
 }
 void VirtualMachine::ClearTopIBuffer(){
     if (IBuffer.empty()) HandleException(VirtualMachine::VMExceptions::EmptyIBuffer); 
-    ReallocVMemory(IBuffer.front());
+    GBuffer1 = CBuffer.top(); 
+    ReallocVMemory();
     IBuffer.pop_front(); 
 }
 
 void VirtualMachine::ClearTopWBuffer(){
     if (WBuffer.empty()) HandleException(VirtualMachine::VMExceptions::EmptyWBuffer); 
-    ReallocVMemory(WBuffer.front());
+    GBuffer1 = CBuffer.top();
+    ReallocVMemory();
     WBuffer.pop_front(); 
 }
 
@@ -52,13 +56,13 @@ void VirtualMachine::GetTopIBufferAddress(){
     if (CBuffer.empty()) HandleException(VirtualMachine::VMExceptions::EmptyIBuffer); 
     GBuffer1 = IBuffer.front(); 
 }
-void VirtualMachine::GetXIBufferAddress(int idx){
-    if (idx >= IBuffer.size()) HandleException(VMExceptions::OutOfBoundsInIBuffer); 
-    GBuffer1 = WBuffer.at(idx); 
+void VirtualMachine::GetXIBufferAddress(){
+    if (GBuffer2 >= IBuffer.size()) HandleException(VMExceptions::OutOfBoundsInIBuffer); 
+    GBuffer1 = WBuffer.at(GBuffer2); 
 }
-void VirtualMachine::GetXWBufferAddress(int idx){
-    if (idx >= WBuffer.size()) HandleException(VMExceptions::OutOfBoundsInWBuffer); 
-    GBuffer1 = WBuffer.at(idx); 
+void VirtualMachine::GetXWBufferAddress(){
+    if (GBuffer2 >= WBuffer.size()) HandleException(VMExceptions::OutOfBoundsInWBuffer); 
+    GBuffer1 = WBuffer.at(GBuffer2); 
 }
 
 void VirtualMachine::AllocateMemory(){
@@ -68,73 +72,108 @@ void VirtualMachine::AllocateMemory(){
 }
 void VirtualMachine::ClearCBuffer(){
     while (!CBuffer.empty()){
-        ReallocVMemory(CBuffer.top());
+        GBuffer1 = CBuffer.top(); 
+        ReallocVMemory();
         CBuffer.pop();  
     }
 }
 void VirtualMachine::ClearIBuffer(){
     while (!IBuffer.empty()){
-        ReallocVMemory(IBuffer.back()); 
+        GBuffer1 = CBuffer.top(); 
+        ReallocVMemory(); 
         IBuffer.pop_back();
     }
 }
 void VirtualMachine::ClearWBuffer(){
     while (!WBuffer.empty()){
-        ReallocVMemory(WBuffer.back()); 
+        GBuffer1 = CBuffer.top(); 
+        ReallocVMemory(); 
         WBuffer.pop_back();
     }
 }
-std::string VirtualMachine::GetAddressData(int address){
-    return GetMemorySpace(address)->Data;  
-}
-void VirtualMachine::StoreInIBuffer(const std::string &Data, const Dat::DataTypes &DTP){
-    AllocateMemoryInIBuffer(); 
-    if (DTP == Dat::STRING) HandleException(VirtualMachine::VMExceptions::StringDataInIBuffer);
-    VirtualVolatileMemory.at(IBuffer.back()).Data = Data; 
-    VirtualVolatileMemory.at(IBuffer.back()).DT = DTP; 
-}
 
-void VirtualMachine::StoreInWBuffer(const std::string &Data, const Dat::DataTypes &DTP){
-    AllocateMemoryInWBuffer(); 
-    if (DTP == Dat::STRING) HandleException(VirtualMachine::VMExceptions::StringDataInWBuffer);
-    VirtualVolatileMemory.at(WBuffer.back()).Data = Data; 
-    VirtualVolatileMemory.at(WBuffer.back()).DT = DTP; 
-}
-void VirtualMachine::StoreInCBuffer(const std::string &Data, const Dat::DataTypes &DTP){
-    AllocateMemoryInCBuffer(); 
-    if (DTP == Dat::STRING) HandleException(VirtualMachine::VMExceptions::StringDataInCBuffer);
-    VirtualVolatileMemory.at(CBuffer.top()).Data = Data; 
-    VirtualVolatileMemory.at(CBuffer.top()).DT = DTP; 
-}
-void VirtualMachine::LoadInCBuffer(const std::string &Data, const Dat::DataTypes &DTP){
-    if (DTP == Dat::DataTypes::STRING){
-        for (const char &ch : Data){
-            StoreInCBuffer(std::string(1,ch), Dat::DataTypes::CHAR);
+void VirtualMachine::LoadInCBuffer(){
+    if (DPBuffer.DTP == Dat::DataTypes::STRING){
+        GBuffer3 = 0; 
+        while (GBuffer3 < 256){
+            AllocateMemory(); 
+            GBuffer1 = GBuffer0;  
+            AllocateMemoryInCBuffer(); 
+            VirtualVolatileMemory.at(GBuffer1).Data = DPBuffer.Data[GBuffer3];
+            VirtualVolatileMemory.at(GBuffer1).DT = Dat::CHAR;  
+            ++GBuffer3; 
         }
     } else{
-        StoreInCBuffer(Data, DTP);
+        AllocateMemory(); 
+        GBuffer1 = GBuffer0;  
+        AllocateMemoryInCBuffer(); 
+        VirtualVolatileMemory.at(GBuffer1).Data = DPBuffer.Data[0]; 
+        VirtualVolatileMemory.at(GBuffer1).DT = DPBuffer.DTP; 
     }
 }
-void VirtualMachine::LoadInWBuffer(const std::string &Data, const Dat::DataTypes &DTP){
-    if (DTP == Dat::DataTypes::STRING){
-        for (const char &ch : Data){
-            StoreInWBuffer(std::string(1,ch), Dat::DataTypes::CHAR);
+void VirtualMachine::LoadInWBuffer(){
+    if (DPBuffer.DTP == Dat::DataTypes::STRING){
+        GBuffer3 = 0; 
+        while (GBuffer3 < 256){
+            AllocateMemory(); 
+            GBuffer1 = GBuffer0;  
+            AllocateMemoryInWBuffer(); 
+            VirtualVolatileMemory.at(GBuffer1).Data = DPBuffer.Data[GBuffer3];
+            VirtualVolatileMemory.at(GBuffer1).DT = Dat::CHAR;  
+            ++GBuffer3; 
         }
     } else{
-        StoreInWBuffer(Data, DTP);
+        AllocateMemory(); 
+        GBuffer1 = GBuffer0;  
+        AllocateMemoryInWBuffer(); 
+        VirtualVolatileMemory.at(GBuffer1).Data = DPBuffer.Data[0]; 
+        VirtualVolatileMemory.at(GBuffer1).DT = DPBuffer.DTP; 
     }
 }
-void VirtualMachine::StoreInAddr(const std::string &Data, const Dat::DataTypes &DTP, const int addr){
-    VirtualVolatileMemory.at(addr).Data = Data; 
-    VirtualVolatileMemory.at(addr).DT = DTP; 
+void VirtualMachine::StoreInAddr(){
+    VirtualVolatileMemory.at(GBuffer1).Data = DPBuffer.Data[0];  
+    VirtualVolatileMemory.at(GBuffer1).DT = DPBuffer.DTP; 
 }
-void VirtualMachine::LoadInIBuffer(const std::string &Data, const Dat::DataTypes &DTP){
-    if (DTP == Dat::DataTypes::STRING){
-        for (const char &ch : Data){
-            StoreInIBuffer(std::string(1,ch), Dat::DataTypes::CHAR);
+void VirtualMachine::LoadInIBuffer(){
+    if (DPBuffer.DTP == Dat::DataTypes::STRING){
+        GBuffer3 = 0; 
+        while (GBuffer3 < 256){
+            AllocateMemory(); 
+            GBuffer1 = GBuffer0;  
+            AllocateMemoryInIBuffer(); 
+            VirtualVolatileMemory.at(GBuffer1).Data = DPBuffer.Data[GBuffer3];
+            VirtualVolatileMemory.at(GBuffer1).DT = Dat::CHAR;  
+            ++GBuffer3; 
         }
     } else{
-        StoreInIBuffer(Data, DTP);
+        AllocateMemory(); 
+        GBuffer1 = GBuffer0;  
+        AllocateMemoryInIBuffer(); 
+        VirtualVolatileMemory.at(GBuffer1).Data = DPBuffer.Data[0]; 
+        VirtualVolatileMemory.at(GBuffer1).DT = DPBuffer.DTP; 
+    }
+}
+void VirtualMachine::LoadBCInWBuffer(){
+    switch(Dat::ByteCode.at(BCP).TType){
+        case Dat::Constant:
+            std::strcpy(DPBuffer.Data.data(), Dat::ByteCode.at(BCP).LT.c_str());
+            DPBuffer.DTP = Dat::ByteCode.at(BCP).Sub_TType.DT; 
+            LoadInWBuffer();
+            break;
+        case Dat::Identifier: 
+            VBuffer = &IdentifierMap->at(std::stoi(Dat::ByteCode.at(BCP).LT)); 
+            if (VBuffer->MAA.empty())
+                HandleException(VirtualMachine::VMExceptions::AttemptedAccessToUninitializedVariable); 
+            GBuffer2 = 0;
+            GBuffer3 = VBuffer->MAA.size();  
+            while (GBuffer2 < GBuffer3){
+                std::strcpy(DPBuffer.Data.data(), Dat::ByteCode.at(BCP).LT.c_str());
+                DPBuffer.DTP = Dat::ByteCode.at(BCP).Sub_TType.DT; 
+                LoadInWBuffer();
+                ++GBuffer2; 
+            }
+            break; 
+        default: break;  
     }
 }
 void VirtualMachine::BufferCleanUps(){
@@ -142,10 +181,21 @@ void VirtualMachine::BufferCleanUps(){
     ClearIBuffer(); 
     ClearWBuffer(); 
 }
-void VirtualMachine::HandleException(VirtualMachine::VMExceptions exp){
+void VirtualMachine::HandleException(VMExceptions exp){
     BufferCleanUps();
-    LoadInIBuffer("[EXCP@BCP" + std::to_string(BCP) + "] : " + VirtualMachine::ExceptionMessage.at(exp), Dat::STRING);
-    GBuffer1 = std::string("[EXCP@BCP]" + std::to_string(BCP) + "] : ").size(); 
+    GBuffer1 = 0; 
+    GBuffer2 = VirtualMachine::ExceptionMessage.at(exp).size(); 
+    // Reads directly from existing VM state/members — zero new local variables!
+    std::snprintf(
+        DPBuffer.Data.data(), 
+        DPBuffer.Data.size(), 
+        "[EXCP@BCP%d] : %s", 
+        BCP, 
+        VirtualMachine::ExceptionMessage.at(exp).c_str()
+    );
+    DPBuffer.DTP = Dat::STRING;
+    LoadInIBuffer();
+    GBuffer1 = std::string("[EXCP@BCP" + std::to_string(BCP) + "] : ").size(); 
     GBuffer2 = 0; 
     GBuffer3 = VirtualMachine::ExceptionMessage.at(exp).size() + GBuffer1;
     while (GBuffer2 != GBuffer3){
@@ -154,23 +204,27 @@ void VirtualMachine::HandleException(VirtualMachine::VMExceptions exp){
     }
     std::exit(1);
 }
-void VirtualMachine::GetByteCodeValue(){
 
-}
 void VirtualMachine::OUTPUT(){
     GetTopIBufferAddress(); 
-    std::cout << GetAddressData(GBuffer1); 
+    std::cout << VirtualVolatileMemory.at(GBuffer1).Data; 
     ClearTopIBuffer(); 
 }
 void VirtualMachine::SET_IN_BUFFER(){
     ++BCP;
+    LoadBCInWBuffer(); 
 }
+void VirtualMachine::SET_IN_IDENTIFIER(){
+    ++BCP; 
+}
+void VirtualMachine::INPUT(){}
+void VirtualMachine::CHANGE_BCP(){}
+void VirtualMachine::MLC(){}
 int VirtualMachine::ExecuteByteCode(){
     while (BCP < Dat::ByteCode.size()){
-        Dat::ByteCodeType BCT = Dat::ByteCode.at(BCP); 
-        switch(BCT.TType){
+        switch(Dat::ByteCode.at(BCP).TType){
             case (Dat::VMInstruction):{
-                switch(BCT.Sub_TType.VMInstruction){
+                switch(Dat::ByteCode.at(BCP).Sub_TType.VMInstruction){
                     case Dat::OUTPUT: 
                         OUTPUT(); 
                         break; 
