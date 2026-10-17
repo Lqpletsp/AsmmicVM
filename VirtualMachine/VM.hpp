@@ -42,13 +42,12 @@ namespace VMF{
             void INPUT(); 
             void MLC(); 
             std::vector<Dat::RawMemoryAddress>* GetVariableMAA(int VID);
-            Dat::RawMemoryAddress* GetMemorySpace(int Address); 
             void GetByteCodeValue();
             void StoreInAddr(); 
             void LoadInWBuffer(); // for all types of values
             void LoadInIBuffer(); // for all types of values
             void LoadInCBuffer(); // for all types of values
-            void LoadBCInWBuffer(); 
+            void LoadBCInWBuffer(); // stores the data of the bytecode in WBuffer
             void AllocateMemoryInCBuffer(); 
             void AllocateMemoryInWBuffer(); 
             void AllocateMemoryInIBuffer(); 
@@ -64,15 +63,15 @@ namespace VMF{
             void AllocateMemory(); 
             void GetTopWBufferAddress();
             void GetTopIBufferAddress(); 
-            void GetTopCBufferAdddress(); 
+            void GetTopCBufferAddress(); 
             void GetXWBufferAddress(); 
             void GetXIBufferAddress(); 
             // exceptions
             enum class VMExceptions{
+                RanOutOfVirtualVolatileMemory, 
                 EmptyWBuffer, 
                 EmptyIBuffer, 
                 EmptyCBuffer,  
-                RanOutOfVirtualVolatileMemory, 
                 StringDataInMemory, 
                 StringDataInIBuffer, 
                 StringDataInWBuffer, 
@@ -81,6 +80,20 @@ namespace VMF{
                 OutOfBoundsInWBuffer, 
                 UnIdentifiedInstruction, 
                 AttemptedAccessToUninitializedVariable, 
+            };
+            const std::unordered_map<int, VMExceptions> MapExceptionCodeAndMessage = {
+                {0,  VMExceptions::RanOutOfVirtualVolatileMemory},
+                {1,  VMExceptions::EmptyWBuffer},
+                {2,  VMExceptions::EmptyIBuffer},
+                {3,  VMExceptions::EmptyCBuffer},
+                {4,  VMExceptions::StringDataInMemory},
+                {5,  VMExceptions::StringDataInIBuffer},
+                {6,  VMExceptions::StringDataInWBuffer},
+                {7,  VMExceptions::StringDataInCBuffer},
+                {8,  VMExceptions::OutOfBoundsInIBuffer},
+                {9,  VMExceptions::OutOfBoundsInWBuffer},
+                {10, VMExceptions::UnIdentifiedInstruction},
+                {11, VMExceptions::AttemptedAccessToUninitializedVariable}
             };
             const std::unordered_map<VMExceptions,std::string> ExceptionMessage{
                 {VMExceptions::EmptyCBuffer, "Computation buffer empty"},
@@ -96,6 +109,6 @@ namespace VMF{
                 {VMExceptions::StringDataInWBuffer, "String data cannot be stored in WBuffer as a whole"},
                 {VMExceptions::AttemptedAccessToUninitializedVariable, "Identifier attempted to access is uninitialized"},
             };
-            void HandleException(VirtualMachine::VMExceptions exp); 
+            void HandleException(); 
     };
 }

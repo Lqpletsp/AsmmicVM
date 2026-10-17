@@ -21,52 +21,83 @@ void VirtualMachine::ReallocVMemory(){g_MemoryPool.push(GBuffer1);}
 void VirtualMachine::AllocateMemoryInWBuffer(){WBuffer.push_back(GBuffer1);}
 void VirtualMachine::AllocateMemoryInCBuffer(){CBuffer.push(GBuffer1);}
 void VirtualMachine::AllocateMemoryInIBuffer(){IBuffer.push_back(GBuffer1);}
-Dat::RawMemoryAddress* VirtualMachine::GetMemorySpace(int Address){return  &VirtualVolatileMemory.at(Address);} 
 void VirtualMachine::SetIdentifierMap(std::unordered_map<int, Dat::VDT> *Map){IdentifierMap = Map;}
 
 void VirtualMachine::ClearTopCBuffer(){
-    if (CBuffer.empty()) HandleException(VirtualMachine::VMExceptions::EmptyCBuffer); 
+    if (CBuffer.empty()) {
+        GBuffer0 = static_cast<int>(VMExceptions::EmptyCBuffer);
+        HandleException();
+    }
     GBuffer1 = CBuffer.top();
     ReallocVMemory();
     CBuffer.pop(); 
 }
+
 void VirtualMachine::ClearTopIBuffer(){
-    if (IBuffer.empty()) HandleException(VirtualMachine::VMExceptions::EmptyIBuffer); 
-    GBuffer1 = CBuffer.top(); 
+    if (IBuffer.empty()) {
+        GBuffer0 = static_cast<int>(VMExceptions::EmptyIBuffer);
+        HandleException();
+    }
+    GBuffer1 = IBuffer.front();
     ReallocVMemory();
     IBuffer.pop_front(); 
 }
 
 void VirtualMachine::ClearTopWBuffer(){
-    if (WBuffer.empty()) HandleException(VirtualMachine::VMExceptions::EmptyWBuffer); 
-    GBuffer1 = CBuffer.top();
+    if (WBuffer.empty()) {
+        GBuffer0 = static_cast<int>(VMExceptions::EmptyWBuffer);
+        HandleException();
+    }
+    GBuffer1 = WBuffer.front();
     ReallocVMemory();
     WBuffer.pop_front(); 
 }
 
 void VirtualMachine::GetTopWBufferAddress(){
-    if (WBuffer.empty()) HandleException(VirtualMachine::VMExceptions::EmptyWBuffer);
+    if (WBuffer.empty()) {
+        GBuffer0 = static_cast<int>(VMExceptions::EmptyWBuffer);
+        HandleException();
+    }
     GBuffer1 = WBuffer.front(); 
 }
-void VirtualMachine::GetTopCBufferAdddress(){
-    if (CBuffer.empty()) HandleException(VirtualMachine::VMExceptions::EmptyCBuffer); 
+
+void VirtualMachine::GetTopCBufferAddress(){
+    if (CBuffer.empty()) {
+        GBuffer0 = static_cast<int>(VMExceptions::EmptyCBuffer);
+        HandleException();
+    }
     GBuffer1 = CBuffer.top(); 
 }
+
 void VirtualMachine::GetTopIBufferAddress(){
-    if (CBuffer.empty()) HandleException(VirtualMachine::VMExceptions::EmptyIBuffer); 
+    if (IBuffer.empty()) {
+        GBuffer0 = static_cast<int>(VMExceptions::EmptyIBuffer);
+        HandleException();
+    }
     GBuffer1 = IBuffer.front(); 
 }
+
 void VirtualMachine::GetXIBufferAddress(){
-    if (GBuffer2 >= IBuffer.size()) HandleException(VMExceptions::OutOfBoundsInIBuffer); 
-    GBuffer1 = WBuffer.at(GBuffer2); 
+    if (GBuffer2 >= IBuffer.size()) {
+        GBuffer0 = static_cast<int>(VMExceptions::OutOfBoundsInIBuffer);
+        HandleException();
+    }
+    GBuffer1 = IBuffer.at(GBuffer2); 
 }
+
 void VirtualMachine::GetXWBufferAddress(){
-    if (GBuffer2 >= WBuffer.size()) HandleException(VMExceptions::OutOfBoundsInWBuffer); 
+    if (GBuffer2 >= WBuffer.size()) {
+        GBuffer0 = static_cast<int>(VMExceptions::OutOfBoundsInWBuffer);
+        HandleException();
+    }
     GBuffer1 = WBuffer.at(GBuffer2); 
 }
 
 void VirtualMachine::AllocateMemory(){
-    if (g_MemoryPool.empty()) HandleException(VirtualMachine::VMExceptions::RanOutOfVirtualVolatileMemory); 
+    if (g_MemoryPool.empty()) {
+        GBuffer0 = static_cast<int>(VMExceptions::RanOutOfVirtualVolatileMemory);
+        HandleException();
+    }
     GBuffer0 = g_MemoryPool.top();
     g_MemoryPool.pop(); 
 }
@@ -162,8 +193,10 @@ void VirtualMachine::LoadBCInWBuffer(){
             break;
         case Dat::Identifier: 
             VBuffer = &IdentifierMap->at(std::stoi(Dat::ByteCode.at(BCP).LT)); 
-            if (VBuffer->MAA.empty())
-                HandleException(VirtualMachine::VMExceptions::AttemptedAccessToUninitializedVariable); 
+            if (VBuffer->MAA.empty()){
+                GBuffer0 = static_cast<int>(VMExceptions::AttemptedAccessToUninitializedVariable); 
+                HandleException(); 
+            }
             GBuffer2 = 0;
             GBuffer3 = VBuffer->MAA.size();  
             while (GBuffer2 < GBuffer3){
@@ -181,23 +214,22 @@ void VirtualMachine::BufferCleanUps(){
     ClearIBuffer(); 
     ClearWBuffer(); 
 }
-void VirtualMachine::HandleException(VMExceptions exp){
+void VirtualMachine::HandleException(){
     BufferCleanUps();
     GBuffer1 = 0; 
-    GBuffer2 = VirtualMachine::ExceptionMessage.at(exp).size(); 
-    // Reads directly from existing VM state/members — zero new local variables!
+    GBuffer2 = VirtualMachine::ExceptionMessage.at(VirtualMachine::MapExceptionCodeAndMessage.at(GBuffer0)).size(); 
     std::snprintf(
         DPBuffer.Data.data(), 
         DPBuffer.Data.size(), 
         "[EXCP@BCP%d] : %s", 
         BCP, 
-        VirtualMachine::ExceptionMessage.at(exp).c_str()
+        VirtualMachine::ExceptionMessage.at(VirtualMachine::MapExceptionCodeAndMessage.at(GBuffer0)).c_str()
     );
     DPBuffer.DTP = Dat::STRING;
     LoadInIBuffer();
     GBuffer1 = std::string("[EXCP@BCP" + std::to_string(BCP) + "] : ").size(); 
     GBuffer2 = 0; 
-    GBuffer3 = VirtualMachine::ExceptionMessage.at(exp).size() + GBuffer1;
+    GBuffer3 = VirtualMachine::ExceptionMessage.at(VirtualMachine::MapExceptionCodeAndMessage.at(GBuffer0)).size() + GBuffer1;
     while (GBuffer2 != GBuffer3){
         OUTPUT(); 
         ++GBuffer2; 
